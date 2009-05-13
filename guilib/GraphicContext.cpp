@@ -1733,7 +1733,7 @@ void CGraphicContext::Flip()
 #endif
 }
 
-void CGraphicContext::ApplyHardwareTransform()
+bool CGraphicContext::ApplyHardwareTransform()
 {
 #ifdef HAS_SDL_OPENGL
   glMatrixMode(GL_MODELVIEW);
@@ -1750,6 +1750,7 @@ void CGraphicContext::ApplyHardwareTransform()
   matrix[3][3] = 1.0f;
 
   glMultMatrixf(&matrix[0][0]);
+  return true;
 #endif
 }
 
