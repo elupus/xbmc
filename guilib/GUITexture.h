@@ -168,6 +168,7 @@ protected:
 
   CRect m_vertex;       // vertex coords to render
   bool m_invalid;       // if true, we need to recalculate
+  bool m_hwtransform;
 
   unsigned char m_alpha;
 

@@ -62,6 +62,7 @@ CGUITextureBase::CGUITextureBase(float posX, float posY, float width, float heig
   m_allocateDynamically = false;
   m_isAllocated = NO;
   m_invalid = true;
+  m_hwtransform = false;
 }
 
 CGUITextureBase::CGUITextureBase(const CGUITextureBase &right)
@@ -229,7 +230,24 @@ void CGUITextureBase::Render(float left, float top, float right, float bottom, f
   float x[4], y[4], z[4];
 
 #define ROUND_TO_PIXEL(x) (float)(MathUtils::round_int(x))
+  if(m_hwtransform)
+  {
+    x[0] = vertex.x1;
+    y[0] = vertex.y1;
 
+    x[1] = vertex.x2;
+    y[1] = vertex.y1;
+
+    x[2] = vertex.x2;
+    y[2] = vertex.y2;
+
+    x[3] = vertex.x1;
+    y[3] = vertex.y2;
+
+    z[0] = z[1] = z[2] = z[3] = 0;
+  }
+  else
+  {
   x[0] = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalXCoord(vertex.x1, vertex.y1));
   y[0] = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalYCoord(vertex.x1, vertex.y1));
   z[0] = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalZCoord(vertex.x1, vertex.y1));
@@ -245,6 +263,7 @@ void CGUITextureBase::Render(float left, float top, float right, float bottom, f
   
   if (y[2] == y[0]) y[2] += 1.0f; if (x[2] == x[0]) x[2] += 1.0f;
   if (y[3] == y[1]) y[3] += 1.0f; if (x[3] == x[1]) x[3] += 1.0f;
+  }
 
 #define MIX_ALPHA(a,c) (((a * (c >> 24)) / 255) << 24) | (c & 0x00ffffff)
 
