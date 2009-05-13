@@ -152,6 +152,7 @@ protected:
   CStdString m_strFileName;
 
 private:
+  bool m_hwtransform;
   int m_referenceCount;
 };
 

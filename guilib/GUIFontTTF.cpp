@@ -779,6 +779,8 @@ void CGUIFontTTF::Begin()
 {
   if (m_dwNestedBeginCount == 0)
   {
+    m_hwtransform = g_graphicsContext.ApplyHardwareTransform();
+
 #ifndef HAS_SDL
     // just have to blit from our texture.
     m_pD3DDevice->SetTexture( 0, m_texture );
@@ -878,6 +880,12 @@ void CGUIFontTTF::End()
   glPopClientAttrib();
   
 #endif
+
+  if(m_hwtransform)
+  {
+    g_graphicsContext.RestoreHardwareTransform();
+    m_hwtransform = false;
+  }
 }
 
 void CGUIFontTTF::RenderCharacter(float posX, float posY, const Character *ch, D3DCOLOR dwColor, bool roundX)
@@ -898,12 +906,34 @@ void CGUIFontTTF::RenderCharacter(float posX, float posY, const Character *ch, D
   g_graphicsContext.ClipRect(vertex, texture);
 
   // transform our positions - note, no scaling due to GUI calibration/resolution occurs
-  float x[4];
-
+  float x[4], y[4], z[4];
+  if(m_hwtransform)
+  {
+    // if shader is okey, we use hardware transforms
+    x[0] = x[3] = vertex.x1;
+    x[1] = x[2] = vertex.x2;
+    y[0] = y[1] = vertex.y1;
+    y[2] = y[3] = vertex.y2;
+    z[0] = z[1] = z[2] = z[3] = 0.0;
+  }
+  else
+  {
   x[0] = g_graphicsContext.ScaleFinalXCoord(vertex.x1, vertex.y1);
   x[1] = g_graphicsContext.ScaleFinalXCoord(vertex.x2, vertex.y1);
   x[2] = g_graphicsContext.ScaleFinalXCoord(vertex.x2, vertex.y2);
   x[3] = g_graphicsContext.ScaleFinalXCoord(vertex.x1, vertex.y2);
+
+  y[0] = g_graphicsContext.ScaleFinalYCoord(vertex.x1, vertex.y1);
+  y[1] = g_graphicsContext.ScaleFinalYCoord(vertex.x2, vertex.y1);
+  y[2] = g_graphicsContext.ScaleFinalYCoord(vertex.x2, vertex.y2);
+  y[3] = g_graphicsContext.ScaleFinalYCoord(vertex.x1, vertex.y2);
+
+#ifndef HAS_SDL_2D
+  z[0] = g_graphicsContext.ScaleFinalZCoord(vertex.x1, vertex.y1);
+  z[1] = g_graphicsContext.ScaleFinalZCoord(vertex.x2, vertex.y1);
+  z[2] = g_graphicsContext.ScaleFinalZCoord(vertex.x2, vertex.y2);
+  z[3] = g_graphicsContext.ScaleFinalZCoord(vertex.x1, vertex.y2);
+#endif
 
   if (roundX)
   {
@@ -926,17 +956,14 @@ void CGUIFontTTF::RenderCharacter(float posX, float posY, const Character *ch, D
     x[3] = rx3;
   }
 
-  float y1 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalYCoord(vertex.x1, vertex.y1));
-  float y2 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalYCoord(vertex.x2, vertex.y1));
-  float y3 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalYCoord(vertex.x2, vertex.y2));
-  float y4 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalYCoord(vertex.x1, vertex.y2));
-
+    for(int i=0; i<4; i++)
+    {
+      y[i] = ROUND_TO_PIXEL(y[i]);
 #ifndef HAS_SDL_2D
-  float z1 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalZCoord(vertex.x1, vertex.y1));
-  float z2 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalZCoord(vertex.x2, vertex.y1));
-  float z3 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalZCoord(vertex.x2, vertex.y2));
-  float z4 = ROUND_TO_PIXEL(g_graphicsContext.ScaleFinalZCoord(vertex.x1, vertex.y2));
+      z[i] = ROUND_TO_PIXEL(z[i]);
 #endif
+    }
+  }
 
 #if !defined(HAS_SDL)
 struct CUSTOMVERTEX {
@@ -952,10 +979,10 @@ struct CUSTOMVERTEX {
   float tb = texture.y2 * m_textureScaleY;
 
   CUSTOMVERTEX verts[4] =  {
-    { x[0], y1, z1, dwColor, tl, tt},
-    { x[1], y2, z2, dwColor, tr, tt},
-    { x[2], y3, z3, dwColor, tr, tb},
-    { x[3], y4, z4, dwColor, tl, tb}
+    { x[0], y[0], z[0], dwColor, tl, tt},
+    { x[1], y[1], z[1], dwColor, tr, tt},
+    { x[2], y[2], z[2], dwColor, tr, tb},
+    { x[3], y[3], z[3], dwColor, tl, tb}
   };
 
   m_pD3DDevice->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 2, verts, sizeof(CUSTOMVERTEX));
@@ -1017,31 +1044,23 @@ struct CUSTOMVERTEX {
     v[i].g = GET_G(dwColor);
     v[i].b = GET_B(dwColor);
     v[i].a = GET_A(dwColor);
+
+    v[i].x = x[i];
+    v[i].y = y[i];
+    v[i].z = z[i];
   }
 
   v[0].u = tl;
   v[0].v = tt;
-  v[0].x = x[0];
-  v[0].y = y1;
-  v[0].z = z1;
 
   v[1].u = tr;
   v[1].v = tt;
-  v[1].x = x[1];
-  v[1].y = y2;
-  v[1].z = z2;
 
   v[2].u = tr;
   v[2].v = tb;
-  v[2].x = x[2];
-  v[2].y = y3;
-  v[2].z = z3;
 
   v[3].u = tl;
   v[3].v = tb;
-  v[3].x = x[3];
-  v[3].y = y4;
-  v[3].z = z4;
 
   m_vertex_count+=4;
 #endif
