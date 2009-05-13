@@ -67,24 +67,31 @@ void CGUITexture::Begin()
     glTexEnvf(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
     VerifyGLState();
   }
-  //glDisable(GL_TEXTURE_2D); // uncomment these 2 lines to switch to wireframe rendering
-  //glBegin(GL_LINE_LOOP);
-  glBegin(GL_QUADS);
+  m_hwtransform = g_graphicsContext.ApplyHardwareTransform();
 }
 
 void CGUITexture::End()
 {
-  glEnd();
   if (m_diffuse.size())
   {
     glDisable(GL_TEXTURE_2D);
     glActiveTextureARB(GL_TEXTURE0_ARB);
   }
   glDisable(GL_TEXTURE_2D);
+
+  if(m_hwtransform)
+  {
+    g_graphicsContext.RestoreHardwareTransform();
+    m_hwtransform = false;
+  }
 }
 
 void CGUITexture::Draw(float *x, float *y, float *z, const CRect &texture, const CRect &diffuse, DWORD color, int orientation)
 {
+  //glDisable(GL_TEXTURE_2D); // uncomment these 2 lines to switch to wireframe rendering
+  //glBegin(GL_LINE_LOOP);
+  glBegin(GL_QUADS);
+
   GLubyte a = (GLubyte)GET_A(color);
   GLubyte r = (GLubyte)GET_R(color);
   GLubyte g = (GLubyte)GET_G(color);
@@ -133,6 +140,8 @@ void CGUITexture::Draw(float *x, float *y, float *z, const CRect &texture, const
       glMultiTexCoord2fARB(GL_TEXTURE1_ARB, diffuse.x1, diffuse.y2);
   }
   glVertex3f(x[3], y[3], z[3]);
+
+  glEnd();
 }
 
 void CGUITexture::DrawQuad(const CRect &rect, DWORD color)
