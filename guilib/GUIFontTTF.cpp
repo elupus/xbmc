@@ -52,6 +52,8 @@ using namespace std;
 #ifdef _LINUX
 #define max(a,b) ((a)>(b)?(a):(b))
 #define min(a,b) ((a)<(b)?(a):(b))
+#endif
+
 // NOTE: rintf is inaccurate - it appears to round to the nearest EVEN integer, rather than to the nearest integer
 //       this is a useful reference for wintel platforms that may be useful:
 //         http://ldesoras.free.fr/doc/articles/rounding_en.pdf
@@ -60,10 +62,6 @@ using namespace std;
 //       we actually use (both here and in CGUIImage)
 //#define ROUND rintf
 //#define ROUND_TO_PIXEL rintf
-#define ROUND(x) MathUtils::round_int(x)
-#define ROUND_TO_PIXEL(x) MathUtils::round_int(x)
-#define TRUNC_TO_PIXEL(x) MathUtils::truncate_int(x)
-#else
 
 #define ROUND(x) (float)(MathUtils::round_int(x))
 
@@ -74,8 +72,6 @@ using namespace std;
 #define ROUND_TO_PIXEL(x) (float)(MathUtils::round_int(x)) - 0.5f
 #define TRUNC_TO_PIXEL(x) (float)(MathUtils::truncate_int(x)) - 0.5f
 #endif
-
-#endif // _LINUX
 
 DWORD PadPow2(DWORD x);
 
