@@ -27,6 +27,7 @@
 #include "FileSystem/SpecialProtocol.h"
 #include "MathUtils.h"
 #include <math.h>
+#include "Shader.h"
 
 // stuff for freetype
 #ifndef _LINUX
@@ -147,6 +148,119 @@ private:
 };
 
 CFreeTypeLibrary g_freeTypeLibrary; // our freetype library
+
+static void glGetViewportScale(GLfloat* Rx, GLfloat* Ry)
+{
+  GLfloat viewport[4];
+  glGetFloatv(GL_VIEWPORT, viewport);
+  Rx[0] = 0.5f * (viewport[2] - viewport[0]); // X Scale
+  Rx[1] = 0.5f * (viewport[2] + viewport[0]); // X Offset
+  Rx[2] = - Rx[1];                            // - X Offset
+  Rx[3] = 1.0f / Rx[0];                       // 1.0 / X Scale
+
+  Ry[0] = 0.5f * (viewport[3] - viewport[1]); // Y Scale
+  Ry[1] = 0.5f * (viewport[3] + viewport[1]); // Y Offset
+  Ry[2] = - Ry[1];                            // - Y Offset
+  Ry[3] = 1.0f / Ry[0];                       // 1.0 / Y Scale
+}
+
+#ifdef HAS_SDL_OPENGL
+class CTTFShaderGLSL
+  : public Shaders::CGLSLShaderProgram
+{
+public:
+  CTTFShaderGLSL()
+  {
+    SetVertexShaderSource(
+            "uniform vec4 Rx;"
+            "uniform vec4 Ry;"
+            "float round(in float a)"
+            "{"
+            "  return(sign(a)*floor(abs(a) + 0.5));"
+            "}"
+            "float correct(in float a, in vec4 R)"
+            "{"
+            "  return ( round(a * R[0] + R[1]) + R[2]) * R[3];"
+            "}"
+            "void main()"
+            "{"
+            "  gl_FrontColor  = gl_Color;"
+            "  gl_TexCoord[0] = gl_MultiTexCoord0;"
+            "  gl_Position    = ftransform();"
+            "  gl_Position   /= gl_Position.w;"
+            "  gl_Position.x  = correct(gl_Position.x, Rx);"
+            "  gl_Position.y  = correct(gl_Position.y, Ry);"
+            "}"
+      );
+  }
+  void OnCompiledAndLinked()
+  {
+    m_HandleRx = glGetUniformLocation(ProgramHandle(), "Rx");
+    m_HandleRy = glGetUniformLocation(ProgramHandle(), "Ry");
+  }
+
+  bool OnEnabled()
+  {
+    GLfloat Rx[4], Ry[4];
+    glGetViewportScale(Rx, Ry);
+    glUniform4fv(m_HandleRx, 1, Rx);
+    glUniform4fv(m_HandleRy, 1, Ry);
+    return true;
+  }
+  GLint m_HandleRx;
+  GLint m_HandleRy;
+};
+
+class CTTFShaderARB
+  : public Shaders::CARBShaderProgram
+{
+public:
+  CTTFShaderARB()
+  {
+    SetVertexShaderSource(
+            "!!ARBvp1.0\n"
+            "PARAM c[7] = { { 0.5 },\n"
+            "                program.local[1..2],\n"
+            "                state.matrix.mvp };\n"
+            "TEMP R0;\n"
+            "TEMP R1;\n"
+            "DP4 R0.x, vertex.position, c[6];\n"
+            "MOV R0.w, R0.x;\n"
+            "RCP R1.x, R0.x;\n"
+            "DP4 R0.z, vertex.position, c[5];\n"
+            "DP4 R0.y, vertex.position, c[4];\n"
+            "DP4 R0.x, vertex.position, c[3];\n"
+            "MUL R0, R0, R1.x;\n"
+            "MAD R0.y, R0, c[2].x, c[2];\n"
+            "MAD R0.x, R0, c[1], c[1].y;\n"
+            "ADD R0.y, R0, c[0].x;\n"
+            "ADD R0.x, R0, c[0];\n"
+            "FLR R0.y, R0;\n"
+            "FLR R0.x, R0;\n"
+            "ADD R0.y, R0, c[2].z;\n"
+            "ADD R0.x, R0, c[1].z;\n"
+            "MUL result.position.y, R0, c[2].w;\n"
+            "MUL result.position.x, R0, c[1].w;\n"
+            "MOV result.position.zw, R0;\n"
+            "MOV result.color, vertex.color;\n"
+            "MOV result.texcoord[0], vertex.texcoord[0];\n"
+            "END\n"
+      );
+  }
+
+  bool OnEnabled()
+  {
+    GLfloat Rx[4], Ry[4];
+    glGetViewportScale(Rx, Ry);
+    glProgramLocalParameter4fvARB(GL_VERTEX_PROGRAM_ARB, 1, Rx);
+    glProgramLocalParameter4fvARB(GL_VERTEX_PROGRAM_ARB, 2, Ry);
+    VerifyGLState();
+    return true;
+  }
+};
+
+static class Shaders::CShaderProgram* m_Shader = NULL;
+#endif
 
 CGUIFontTTF::CGUIFontTTF(const CStdString& strFileName)
 {
@@ -327,6 +441,21 @@ bool CGUIFontTTF::Load(const CStdString& strFilename, float height, float aspect
   // cache the ellipses width
   Character *ellipse = GetCharacter(L'.');
   if (ellipse) m_ellipsesWidth = ellipse->advance;
+
+#ifdef HAS_SDL_OPENGL
+  if(m_Shader == NULL && (GLEW_ARB_shading_language_100 || GLEW_ARB_vertex_program))
+  {
+    if(GLEW_ARB_shading_language_100)
+      m_Shader = new CTTFShaderGLSL();
+    else if(GLEW_ARB_vertex_program)
+      m_Shader = new CTTFShaderARB();
+
+    if(m_Shader->CompileAndLink())
+      CLog::Log(LOGERROR, "%s - compiled font rounding shader", __FUNCTION__);
+    else
+      CLog::Log(LOGERROR, "%s - failed to compile rounding shader", __FUNCTION__);
+  }
+#endif
 
   return true;
 }
@@ -848,6 +977,9 @@ void CGUIFontTTF::Begin()
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     VerifyGLState();
 
+    if(m_Shader && m_Shader->OK())
+      m_Shader->Enable();
+
     m_vertex_count = 0;
 #endif
   }
@@ -878,7 +1010,9 @@ void CGUIFontTTF::End()
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
   glDrawArrays(GL_QUADS, 0, m_vertex_count);
   glPopClientAttrib();
-  
+
+  if(m_Shader && m_Shader->OK())
+    m_Shader->Disable();
 #endif
 
   if(m_hwtransform)
