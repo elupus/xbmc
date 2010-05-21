@@ -68,6 +68,8 @@ public:
   virtual bool BeginRender() = 0;
   virtual bool EndRender() = 0;
   virtual bool PresentRender() = 0;
+  virtual bool SchedulePresent(int64_t timestamp) { return false; };
+
   virtual bool ClearBuffers(color_t color) = 0;
   virtual bool ClearBuffers(float r, float g, float b, float a) = 0;
   virtual bool IsExtSupported(const char* extension) = 0;

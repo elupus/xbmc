@@ -129,6 +129,12 @@ static double wrap(double x, double minimum, double maximum)
 
 void CXBMCRenderManager::WaitPresentTime(double presenttime)
 {
+  /* try to have window manager schedule this frame */
+  if(g_graphicsContext.IsFullScreenVideo() 
+  && g_application.IsCurrentThread() 
+  && g_Windowing.SchedulePresent(CDVDClock::GetAbsoluteTics(presenttime * DVD_TIME_BASE)))
+    return;
+
   int fps = g_VideoReferenceClock.GetRefreshRate();
   if(fps <= 0)
   {
