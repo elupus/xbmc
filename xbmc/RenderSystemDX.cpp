@@ -36,6 +36,7 @@
 #include "Util.h"
 #include "win32/WIN32Util.h"
 #include "LocalizeStrings.h"
+#include <dwmapi.h>
 
 using namespace std;
 
@@ -74,6 +75,8 @@ CRenderSystemDX::CRenderSystemDX() : CRenderSystemBase()
   m_useD3D9Ex       = false;
   m_defaultD3DUsage = 0;
   m_defaultD3DPool  = D3DPOOL_MANAGED;
+  m_scheduledPresent = false;
+  m_scheduledEnabled = false;
 
   ZeroMemory(&m_D3DPP, sizeof(D3DPRESENT_PARAMETERS));
 }
@@ -655,9 +658,86 @@ bool CRenderSystemDX::PresentRender()
   if (!m_bRenderCreated)
     return false;
 
+  if(m_scheduledEnabled && !m_scheduledPresent)
+  {
+    CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - disabling present queue");
+
+    DWM_PRESENT_PARAMETERS params = {};
+    params.cbSize             = sizeof(params);
+    params.fQueue             = FALSE;
+
+    if(FAILED(DwmSetPresentParameters(m_hDeviceWnd, &params)))
+      CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - failed to set present parameters");
+
+    if(FAILED(DwmEnableMMCSS(FALSE)))
+      CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - failed to enable multimedia timers");
+
+    m_scheduledEnabled = false;
+  }
+
   bool result = PresentRenderImpl();
+ 
+  m_scheduledPresent = false;
 
   return result;
+}
+
+bool CRenderSystemDX::SchedulePresent(int64_t timestamp)
+{
+  BOOL composing;
+  if(FAILED(DwmIsCompositionEnabled(&composing)) || !composing)
+    return false;
+
+  DWM_TIMING_INFO info = {};
+  info.cbSize = sizeof(info);
+  if(FAILED(DwmGetCompositionTimingInfo(m_hDeviceWnd, &info)))
+  {
+    CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - failed to get timing info");
+    return false;
+  }
+
+  int64_t offset = (timestamp - (int64_t)info.qpcVBlank) / (int64_t)info.qpcRefreshPeriod;
+  if(offset < 1)
+    offset = 1;
+  if(offset * info.rateRefresh.uiDenominator > info.rateRefresh.uiNumerator)
+    offset = info.rateRefresh.uiNumerator / info.rateRefresh.uiDenominator;
+
+  if(m_scheduledEnabled)
+  {
+    int64_t error = offset + (int64_t)info.cRefresh - (int64_t)info.cRefreshNextPresented;
+    if(FAILED(DwmModifyPreviousDxFrameDuration(m_hDeviceWnd, (int)error, TRUE)))
+    {
+      CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - failed update previous frame duration N:%"PRIu64" R:%"PRIu64" O:"PRId64" E:"PRId64, info.cRefreshNextPresented, info.cRefresh, offset, error);
+      return false;
+    }
+  }
+  else
+  {
+    CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - enabling present queue at offset %"PRId64, offset);
+
+    if(FAILED(DwmEnableMMCSS(TRUE)))
+      CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - failed to enable multimedia timers");
+
+    DWM_PRESENT_PARAMETERS params = {};
+    params.cbSize             = sizeof(params);
+    params.fQueue             = TRUE;
+    params.cBuffer            = 4;
+    params.fUseSourceRate     = FALSE;
+    params.cRefreshesPerFrame = 1;
+    if(offset > 0)
+      params.cRefreshStart    = info.cRefresh + offset;
+    else
+      params.cRefreshStart    = info.cRefresh;
+    params.eSampling          = DWM_SOURCE_FRAME_SAMPLING_POINT;
+    if(FAILED(DwmSetPresentParameters(m_hDeviceWnd, &params)))
+    {
+      CLog::Log(LOGERROR, "CRenderSystemDX::SchedulePresent - failed to set present parameters");
+      return false;
+    }
+    m_scheduledEnabled = true;
+  }
+  m_scheduledPresent = true;
+  return true;
 }
 
 void CRenderSystemDX::SetVSync(bool enable)

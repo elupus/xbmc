@@ -70,6 +70,7 @@ public:
   bool   SetMaxSpeedAdjust(double speed);
 
   static double GetAbsoluteClock();
+  static int64_t GetAbsoluteTics(double dTime) { return (int64_t)(dTime * m_systemFrequency / DVD_TIME_BASE) + m_systemOffset; }
   static double GetFrequency() { return (double)m_systemFrequency ; }
   static double WaitAbsoluteClock(double target);
 protected:

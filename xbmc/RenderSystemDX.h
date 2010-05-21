@@ -44,6 +44,8 @@ public:
   virtual bool BeginRender();
   virtual bool EndRender();
   virtual bool PresentRender();
+  virtual bool SchedulePresent(int64_t timestamp);
+
   virtual bool ClearBuffers(color_t color);
   virtual bool ClearBuffers(float r, float g, float b, float a);
   virtual bool IsExtSupported(const char* extension);
@@ -133,6 +135,9 @@ protected:
   std::vector<ID3DResource*>  m_resources;
 
   bool                        m_inScene; ///< True if we're in a BeginScene()/EndScene() block
+  bool m_inScene; ///< True if we're in a BeginScene()/EndScene() block
+  bool m_scheduledPresent; // True if next present have been sheduled
+  bool m_scheduledEnabled;
 };
 
 #endif // RENDER_SYSTEM_DX
