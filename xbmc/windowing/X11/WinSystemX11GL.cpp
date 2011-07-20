@@ -24,6 +24,7 @@
 
 #include "WinSystemX11GL.h"
 #include "utils/log.h"
+#include "utils/MathUtils.h"
 
 CWinSystemX11GL::CWinSystemX11GL()
 {
@@ -33,6 +34,7 @@ CWinSystemX11GL::CWinSystemX11GL()
   m_glXSwapIntervalMESA  = NULL;
   m_glXGetSyncValuesOML  = NULL;
   m_glXSwapBuffersMscOML = NULL;
+  m_glXCopySubBufferMESA = NULL;
 
   m_iVSyncErrors = 0;
 }
@@ -43,6 +45,20 @@ CWinSystemX11GL::~CWinSystemX11GL()
 
 bool CWinSystemX11GL::PresentRenderImpl(const CDirtyRegionList& dirty)
 {
+  if(m_glXCopySubBufferMESA && dirty.size() > 0)
+  {
+    for (unsigned int i = 0; i < dirty.size(); i++)
+    {
+      GLint x1 = MathUtils::round_int(dirty[i].x1);
+      GLint y1 = MathUtils::round_int(dirty[i].y1);
+      GLint x2 = MathUtils::round_int(dirty[i].x2);
+      GLint y2 = MathUtils::round_int(dirty[i].y2);
+
+      m_glXCopySubBufferMESA(m_dpy, m_glWindow, x1, m_height - y2, x2-x1, y2-y1);
+    }
+    return;
+  }
+
   if(m_iVSyncMode == 3)
   {
     glFinish();
@@ -236,6 +252,10 @@ bool CWinSystemX11GL::CreateNewWindow(const CStdString& name, bool fullScreen, R
   else
     m_glXSwapIntervalMESA = NULL;
 
+  if (IsExtSupported("GLX_MESA_copy_sub_buffer"))
+    m_glXCopySubBufferMESA = (void(*)(Display *, GLXDrawable, int, int, int, int))glXGetProcAddress((const GLubyte*)"glXCopySubBufferMESA");
+  else
+    m_glXCopySubBufferMESA = NULL;
 
   return true;
 }

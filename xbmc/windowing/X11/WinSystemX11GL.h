@@ -51,7 +51,7 @@ protected:
 
   Bool    (*m_glXGetSyncValuesOML)(Display* dpy, GLXDrawable drawable, int64_t* ust, int64_t* msc, int64_t* sbc);
   int64_t (*m_glXSwapBuffersMscOML)(Display* dpy, GLXDrawable drawable, int64_t target_msc, int64_t divisor,int64_t remainder);
-
+  void    (*m_glXCopySubBufferMESA )(Display *dpy, GLXDrawable drawable, int x, int y, int width, int height );
   int m_iVSyncErrors;
 };
 
