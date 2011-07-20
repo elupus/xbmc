@@ -540,7 +540,7 @@ bool CRenderSystemDX::CreateDevice()
   return true;
 }
 
-bool CRenderSystemDX::PresentRenderImpl()
+bool CRenderSystemDX::PresentRenderImpl(const CDirtyRegionList &dirty)
 {
   HRESULT hr;
 
@@ -732,12 +732,12 @@ bool CRenderSystemDX::IsExtSupported(const char* extension)
   return false;
 }
 
-bool CRenderSystemDX::PresentRender()
+bool CRenderSystemDX::PresentRender(const CDirtyRegionList &dirty)
 {
   if (!m_bRenderCreated)
     return false;
 
-  bool result = PresentRenderImpl();
+  bool result = PresentRenderImpl(dirty);
 
   return result;
 }
