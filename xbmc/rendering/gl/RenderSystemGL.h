@@ -82,6 +82,10 @@ protected:
 
   int        m_glslMajor;
   int        m_glslMinor;
+  
+  GLuint     m_fbo;
+  GLuint     m_rbo;
+  GLuint     m_dbo;
 };
 
 #endif // RENDER_SYSTEM_H

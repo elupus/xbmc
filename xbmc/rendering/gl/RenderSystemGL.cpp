@@ -207,6 +207,65 @@ bool CRenderSystemGL::ResetRenderSystem(int width, int height, bool fullScreen, 
   glEnable(GL_BLEND);          // Turn Blending On
   glDisable(GL_DEPTH_TEST);
 
+  if (GLEW_EXT_framebuffer_object && g_advancedSettings.m_guiAlgorithmDirtyRegions)
+  {
+    CLog::Log(LOGDEBUG, "CRenderSystemGL::ResetRenderSystem - using GL_EXT_framebuffer_object");
+    glGenFramebuffersEXT(1, &m_fbo);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+
+    if(GLEW_EXT_framebuffer_blit)
+    {
+      glGenRenderbuffersEXT(1, &m_rbo);
+      glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_rbo);
+      glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGBA8, m_width, m_height);
+      glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT, m_fbo);
+      glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+    }
+    else
+    {
+      glGenTextures(1, &m_rbo);
+      glBindTexture(GL_TEXTURE_2D, m_rbo);
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S    , GL_CLAMP_TO_EDGE);
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T    , GL_CLAMP_TO_EDGE);
+      glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA8, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+      glFramebufferTexture2DEXT   (GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_rbo, 0);
+      glBindTexture(GL_TEXTURE_2D, 0);
+    }
+#if(0)
+    glGenRenderbuffersEXT(1, &m_dbo);
+    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_dbo);
+    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, m_width, m_height);
+    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, m_fbo);
+
+    GLuint m_sbo;
+    glGenRenderbuffersEXT(1, &m_sbo);
+    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_sbo);
+    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX, m_width, m_height);
+    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, m_fbo);
+#endif
+
+#if(1)
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+    glReadBuffer(GL_BACK);
+    glDrawBuffer(GL_BACK);
+#endif
+
+    GLenum res;
+    res = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER);
+    if(res != GL_FRAMEBUFFER_COMPLETE_EXT)
+      CLog::Log(LOGERROR, "CRenderSystemGL::ResetRenderSystem - framebuffer is not complete: %u - %s", res, gluErrorString(res));
+
+    //assert(res == GL_FRAMEBUFFER_COMPLETE_EXT);
+  }
+  else
+  {
+    m_fbo = 0;
+    m_rbo = 0;
+    m_dbo = 0;
+  }
+
   return true;
 }
 
@@ -222,6 +281,13 @@ bool CRenderSystemGL::BeginRender()
   if (!m_bRenderCreated)
     return false;
 
+  if(m_fbo)
+  {
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+    glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+  }
+
   return true;
 }
 
@@ -229,6 +295,40 @@ bool CRenderSystemGL::EndRender()
 {
   if (!m_bRenderCreated)
     return false;
+
+  if(m_fbo)
+  {
+    if(GLEW_EXT_framebuffer_blit)
+    {
+      glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, m_fbo);
+      glReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
+      glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
+      glDrawBuffer(GL_BACK);
+
+      glBlitFramebufferEXT( 0, 0, m_width, m_height
+                          , 0, 0, m_width, m_height
+                          , GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+      glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, 0);
+      glReadBuffer(GL_BACK);
+    }
+    else
+    {
+      glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+      glBindTexture(GL_TEXTURE_2D, m_rbo);
+      glEnable(GL_TEXTURE_2D);
+      glDisable(GL_BLEND);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+      glBegin(GL_QUADS);
+      glTexCoord2f(0.0f, 1.0f); glVertex3f(0.0f          , 0.0f           , 0.0f);
+      glTexCoord2f(1.0f, 1.0f); glVertex3f((float)m_width, 0.0f           , 0.0f);
+      glTexCoord2f(1.0f, 0.0f); glVertex3f((float)m_width, (float)m_height, 0.0f);
+      glTexCoord2f(0.0f, 0.0f); glVertex3f(0.0f          , (float)m_height, 0.0f);
+      glEnd();
+    }
+
+  }
 
   return true;
 }
