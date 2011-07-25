@@ -233,6 +233,7 @@
 #include "dialogs/GUIDialogPlayEject.h"
 #include "utils/XMLUtils.h"
 #include "addons/AddonInstaller.h"
+#include "guilib/GUIExternalAppControl.h"
 
 #ifdef HAS_PERFORMANCE_SAMPLE
 #include "utils/PerformanceSample.h"
@@ -1808,6 +1809,8 @@ bool CApplication::LoadUserWindows()
   return true;
 }
 
+static CGUIExternalAppControl* g_appctrl;
+
 bool CApplication::RenderNoPresent()
 {
   MEASURE_FUNCTION;
@@ -1855,6 +1858,19 @@ bool CApplication::RenderNoPresent()
         iBlinkRecord = 0;
     }
   }
+
+  if(g_appctrl == NULL) {
+    g_appctrl = new CGUIExternalAppControl();
+    g_appctrl->SetPosition(1.0f, 1.0f);
+    g_appctrl->SetHeight(600);
+    g_appctrl->SetWidth(600);
+
+    g_appctrl->SetWindow(0x380006e);
+
+  }
+  CDirtyRegionList bla;
+  g_appctrl->Process(0, bla);
+  g_appctrl->Render();
 
   g_graphicsContext.Unlock();
 
@@ -2241,6 +2257,9 @@ bool CApplication::OnAction(const CAction &action)
       return true;
     }
   }
+
+  if(g_appctrl->OnAction(action))
+    return true;
 
   if (action.GetID() == ACTION_TOGGLE_FULLSCREEN)
   {
