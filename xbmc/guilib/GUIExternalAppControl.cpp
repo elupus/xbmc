@@ -25,6 +25,7 @@
 #include "utils/MathUtils.h"
 #include "Key.h"
 #include "utils/CharsetConverter.h"
+#include "settings/Settings.h"
 #include <GL/glew.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -212,14 +213,13 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
       return;
   }
 
-  XGetWindowAttributes (m_display, m_window, &m_attrib);
   float scale_x = m_width  / m_attrib.width;
   float scale_y = m_height / m_attrib.height;
 
   float w, h, x, y;
   if(scale_x < scale_y)
   {
-    w  = m_width;
+    w = m_width;
     h = m_attrib.height * scale_x;
   }
   else
@@ -317,13 +317,7 @@ void CGUIExternalAppControl::SendKeyPress(KeySym sym)
 
 bool CGUIExternalAppControl::OnAction(const CAction &action)
 {
-  if (action.GetID() == ACTION_PLAYER_PLAY)
-  {
-
-    OnMouseEvent(CPoint(m_width * 0.5, m_height * 0.5), CMouseEvent(ACTION_MOUSE_LEFT_CLICK, 0, 0, 0));
-
-  }
-  else if(action.GetID() >= KEY_ASCII && action.GetUnicode())
+  if(action.GetID() >= KEY_ASCII && action.GetUnicode())
   {
     CStdStringW wide;
     CStdString  utf8;

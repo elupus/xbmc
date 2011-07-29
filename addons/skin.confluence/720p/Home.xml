@@ -1058,5 +1058,11 @@
 				<label>[COLOR=grey]$INFO[System.Date][/COLOR] | $INFO[System.Time]</label>
 			</control>
 		</control>
+		<control type="externalapp">
+			<posx>0</posx>
+			<posy>0</posy>
+			<width>400</width>
+			<height>400</height>
+		</control>		
 	</controls>	
 </window>
