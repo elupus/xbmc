@@ -21,13 +21,13 @@ class CGUIExternalAppControl: public CGUIControl
   PFNGLXRELEASETEXIMAGEEXTPROC m_glXReleaseTexImageEXT;
 
   Window            m_window;
+  Window            m_active;
   GLXPixmap         m_pixmap_gl;
   Pixmap            m_pixmap;
   GLuint            m_texture;
   XWindowAttributes m_attrib;
   GLXFBConfig       m_config;
-  float             m_top;
-  float             m_bottom;
+  CRect             m_rect;
 
   struct SVertex
   {
@@ -36,17 +36,24 @@ class CGUIExternalAppControl: public CGUIControl
   } m_vertex[4];
 
 public:
-  CGUIExternalAppControl();
+  CGUIExternalAppControl(int parentID, int controlID, float posX, float posY, float width, float height);
   virtual ~CGUIExternalAppControl();
   virtual void Render();
 
   virtual void Process  (unsigned int currentTime, CDirtyRegionList &dirtyregions);
   virtual bool OnAction (const CAction &action) ;
   virtual bool OnMessage(CGUIMessage& message);
+
   virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
+  virtual bool         OnMouseOver(const CPoint &point);
 
   virtual CGUIExternalAppControl *Clone() const { return NULL; };
 
+  bool IsParent(Window parent, Window child);
+
+  void SendCrossingEvent(int x, int y, Window window, int type, int detail);
+
+  bool FindSubWindow(int& x, int& y, Window& w, long mask);
   void FillXKeyEvent(XKeyEvent& event);
   void SendKeyPress(KeySym sym);
   void Resize();

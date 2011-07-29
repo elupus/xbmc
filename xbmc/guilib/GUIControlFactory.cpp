@@ -29,6 +29,7 @@
 #include "GUIBorderedImage.h"
 #include "GUILabelControl.h"
 #include "GUIEditControl.h"
+#include "GUIExternalAppControl.h"
 #include "GUIFadeLabelControl.h"
 #include "GUICheckMarkControl.h"
 #include "GUIToggleButtonControl.h"
@@ -102,6 +103,7 @@ static const ControlMapping controls[] =
     {"grouplist",         CGUIControl::GUICONTROL_GROUPLIST},
     {"scrollbar",         CGUIControl::GUICONTROL_SCROLLBAR},
     {"multiselect",       CGUIControl::GUICONTROL_MULTISELECT},
+    {"externalapp",       CGUIControl::GUICONTROL_EXTERNAL_APP},
     {"list",              CGUIControl::GUICONTAINER_LIST},
     {"wraplist",          CGUIControl::GUICONTAINER_WRAPLIST},
     {"fixedlist",         CGUIControl::GUICONTAINER_FIXEDLIST},
@@ -1307,6 +1309,11 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
   else if (type == CGUIControl::GUICONTROL_VISUALISATION)
   {
     control = new CGUIVisualisationControl(parentID, id, posX, posY, width, height);
+  }
+  else if (type == CGUIControl::GUICONTROL_EXTERNAL_APP)
+  {
+    control = new CGUIExternalAppControl(parentID, id, posX, posY, width, height);
+    ((CGUIExternalAppControl *)control)->SetWindow(0x3c0006e);
   }
 
   // things that apply to all controls

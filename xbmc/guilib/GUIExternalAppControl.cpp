@@ -32,8 +32,11 @@
 #include <GL/glx.h>
 #include <X11/extensions/Xcomposite.h>
 
-CGUIExternalAppControl::CGUIExternalAppControl()
- : m_pixmap_gl(None)
+CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, float posX, float posY, float width, float height)
+ : CGUIControl(parentID, controlID, posX, posY, width, height)
+ , m_window(None)
+ , m_active(None)
+ , m_pixmap_gl(None)
  , m_pixmap(None)
  , m_texture(0)
 {
@@ -88,6 +91,7 @@ bool CGUIExternalAppControl::SetWindow(Window window)
   m_display = g_Windowing.GetDisplay();
   m_screen  = DefaultScreen(m_display);
 
+  float top = 0.0f, bottom = 0.0f;
 
   XVisualInfo* visinfo;
 
@@ -131,13 +135,13 @@ bool CGUIExternalAppControl::SetWindow(Window window)
         &value);
     if (value)
     {
-      m_top    = 0.0f;
-      m_bottom = 1.0f;
+      top    = 0.0f;
+      bottom = 1.0f;
     }
     else
     {
-      m_top    = 1.0f;
-      m_bottom = 0.0f;
+      top    = 1.0f;
+      bottom = 0.0f;
     }
 
     break;
@@ -150,16 +154,16 @@ bool CGUIExternalAppControl::SetWindow(Window window)
   m_window = window;
 
   m_vertex[0].u = 0.0f;
-  m_vertex[0].v = m_top;
+  m_vertex[0].v = top;
   m_vertex[0].z = 0.0f;
   m_vertex[1].u = 1.0f;
-  m_vertex[1].v = m_top;
+  m_vertex[1].v = top;
   m_vertex[1].z = 0.0f;
   m_vertex[2].u = 1.0f;
-  m_vertex[2].v = m_bottom;
+  m_vertex[2].v = bottom;
   m_vertex[2].z = 0.0f;
   m_vertex[3].u = 0.0f;
-  m_vertex[3].v = m_bottom;
+  m_vertex[3].v = bottom;
   m_vertex[3].z = 0.0f;
 
 
@@ -224,8 +228,11 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
     w = m_attrib.width  * scale_y;
   }
 
-  x = m_posX + m_width * 0.5  - w * 0.5;
+  x = m_posX + m_width  * 0.5 - w * 0.5;
   y = m_posY + m_height * 0.5 - h * 0.5;
+
+  m_rect.SetRect(x, y, x + w, y + h);
+  m_rect -= CPoint(m_posX, m_posY);
 
   m_vertex[0].x = x;
   m_vertex[0].y = y;
@@ -239,7 +246,7 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
   m_vertex[3].x = x;
   m_vertex[3].y = y + h;
 
-  for(unsigned i; i < 4; ++i)
+  for(unsigned i = 0; i < 4; ++i)
     g_graphicsContext.ScaleFinalCoords(m_vertex[i].x, m_vertex[i].y, m_vertex[i].z);
 
   MarkDirtyRegion();
@@ -248,6 +255,7 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
 
 void CGUIExternalAppControl::Render()
 {
+  glEnable(GL_TEXTURE_2D);
   glBindTexture (GL_TEXTURE_2D, m_texture);
 
   m_glXBindTexImageEXT (m_display, m_pixmap_gl, GLX_FRONT_LEFT_EXT, NULL);
@@ -276,6 +284,7 @@ void CGUIExternalAppControl::Render()
   glEnd ();
 
   m_glXReleaseTexImageEXT (m_display, m_pixmap_gl, GLX_FRONT_LEFT_EXT);
+  glDisable(GL_TEXTURE_2D);
 }
 
 void CGUIExternalAppControl::FillXKeyEvent(XKeyEvent& event)
@@ -314,7 +323,7 @@ bool CGUIExternalAppControl::OnAction(const CAction &action)
     OnMouseEvent(CPoint(m_width * 0.5, m_height * 0.5), CMouseEvent(ACTION_MOUSE_LEFT_CLICK, 0, 0, 0));
 
   }
-  else if(action.GetID() >= KEY_ASCII && action.GetID() < KEY_MOUSE)
+  else if(action.GetID() >= KEY_ASCII && action.GetUnicode())
   {
     CStdStringW wide;
     CStdString  utf8;
@@ -325,16 +334,16 @@ bool CGUIExternalAppControl::OnAction(const CAction &action)
   else
   {
     struct SActionToSym {
-      unsigned int action;
+      int          action;
       KeySym       sym;
     } actions[] = {
         {ACTION_MOVE_UP   , XK_Up},
         {ACTION_MOVE_DOWN , XK_Down},
         {ACTION_MOVE_LEFT , XK_Left},
         {ACTION_MOVE_RIGHT, XK_Right},
-        {ACTION_NONE      , 0},
         {ACTION_PAGE_UP   , XK_Page_Up},
         {ACTION_PAGE_DOWN , XK_Page_Down},
+        {ACTION_NONE      , 0},
     };
 
     for(SActionToSym* it = actions; it->action != ACTION_NONE; ++it)
@@ -350,31 +359,124 @@ bool CGUIExternalAppControl::OnAction(const CAction &action)
   return CGUIControl::OnAction(action);
 }
 
+bool CGUIExternalAppControl::FindSubWindow(int& x, int& y, Window& w, long mask)
+{
+  Window dst, child;
+  dst   = w;
+  while(dst != None)
+  {
+    if(!XTranslateCoordinates(m_display, w, dst  , x, y, &x, &y, &child))
+      return false;
+    w   = dst;
+    dst = child;
+  }
+  return true;
+}
+
+bool CGUIExternalAppControl::IsParent(Window parent, Window child)
+{
+  while(child != None)
+  {
+    Window root, *children;
+    unsigned int count;
+    if(XQueryTree(m_display, child, &root, &child, &children, &count) == 0)
+      return false;
+    XFree(children);
+    if(parent == child)
+      return true;
+  }
+  return false;
+}
+
+
+void CGUIExternalAppControl::SendCrossingEvent(int x, int y, Window window, int type, int detail)
+{
+  XCrossingEvent crossev = {0};
+  crossev.display       = m_display;
+  crossev.root          = XDefaultRootWindow(m_display);;
+  crossev.window        = window;
+  XTranslateCoordinates(m_display, m_window, window, x, y, &crossev.x, &crossev.y, &crossev.subwindow);
+  crossev.x_root        = m_attrib.x + x;
+  crossev.y_root        = m_attrib.y + y;
+  crossev.mode          = NotifyNormal;
+  crossev.same_screen   = True;
+  crossev.focus         = false;
+  crossev.state         = 0;
+  crossev.time          = 0;
+  crossev.detail        = detail;
+  crossev.type          = type;
+  if(type == EnterNotify)
+    XSendEvent(m_display,window,True,EnterWindowMask,(XEvent*)&crossev);
+  else
+    XSendEvent(m_display,window,True,LeaveWindowMask,(XEvent*)&crossev);
+}
+
+bool CGUIExternalAppControl::OnMouseOver(const CPoint &point)
+{
+  if(!m_rect.PtInRect(point))
+    return true;
+
+  int x = MathUtils::round_int((point.x - m_rect.x1) / m_rect.Width()  * m_attrib.width);
+  int y = MathUtils::round_int((point.y - m_rect.y1) / m_rect.Height() * m_attrib.height);
+
+  XMotionEvent event = {0};
+  event.display       = m_display;
+  event.window        = m_window;
+  event.root          = XDefaultRootWindow(m_display);;
+  event.subwindow     = None;
+  event.time          = 0;
+  event.x             = x;
+  event.y             = y;
+  event.x_root        = m_attrib.x + event.x;
+  event.y_root        = m_attrib.y + event.y;
+  event.same_screen   = True;
+  event.is_hint       = 0;
+  event.state         = 0;
+  event.type          = MotionNotify;
+  FindSubWindow(event.x, event.y, event.window, PointerMotionMask);
+
+  if(m_active == None)
+  {
+    SendCrossingEvent(x, y, m_window, EnterNotify, NotifyNonlinear);
+    m_active = m_window;
+  }
+
+  if(m_active != event.window)
+  {
+
+    if(IsParent(event.window, m_active))
+    {
+      SendCrossingEvent(x, y, m_active    , LeaveNotify, NotifyAncestor);
+      SendCrossingEvent(x, y, event.window, EnterNotify, NotifyInferior);
+    }
+    else if(IsParent(m_active, event.window))
+    {
+      SendCrossingEvent(x, y, m_active    , LeaveNotify, NotifyInferior);
+      SendCrossingEvent(x, y, event.window, EnterNotify, NotifyAncestor);
+    }
+    else
+    {
+      SendCrossingEvent(x, y, m_active    , LeaveNotify, NotifyNonlinear);
+      SendCrossingEvent(x, y, event.window, EnterNotify, NotifyNonlinear);
+    }
+    m_active = event.window;
+  }
+
+  XSendEvent(m_display,event.window,True,PointerMotionMask,(XEvent*)&event);
+
+  return CGUIControl::OnMouseOver(point);
+}
+
 EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMouseEvent &event)
 {
+  if(!m_rect.PtInRect(point))
+    return EVENT_RESULT_UNHANDLED;
+
+  int x = MathUtils::round_int((point.x - m_rect.x1) / m_rect.Width()  * m_attrib.width);
+  int y = MathUtils::round_int((point.y - m_rect.y1) / m_rect.Height() * m_attrib.height);
+
   if (event.m_id == ACTION_MOUSE_LEFT_CLICK)
   {
-    XCrossingEvent crossev = {0};
-    crossev.display=m_display;
-    crossev.window=m_window;
-    crossev.root=XDefaultRootWindow(m_display);;
-    crossev.subwindow=None;
-    crossev.time=0;
-    crossev.x=MathUtils::round_int(point.x / m_width  * m_attrib.width);
-    crossev.y=MathUtils::round_int(point.y / m_height * m_attrib.height);
-    crossev.x_root      = m_attrib.x + crossev.x;
-    crossev.y_root      = m_attrib.y + crossev.y;
-    crossev.mode=NotifyNormal;
-    crossev.detail=NotifyNonlinear;
-    crossev.same_screen=True;
-    crossev.focus=True;
-    crossev.state=0;
-
-    crossev.type=EnterNotify;
-    XSendEvent(m_display,m_window,True,EnterWindowMask|LeaveWindowMask,(XEvent*)&crossev);
-    XSync(m_display,false);
-
-
     XButtonEvent event = {0};
 
     event.display     = m_display;
@@ -382,30 +484,26 @@ EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMo
     event.root        = XDefaultRootWindow(m_display);
     event.subwindow   = None;
     event.time        = 0;
-    event.x           = MathUtils::round_int(point.x / m_width  * m_attrib.width);
-    event.y           = MathUtils::round_int(point.y / m_height * m_attrib.height);
+    event.x           = x;
+    event.y           = y;
     event.x_root      = m_attrib.x + event.x;
     event.y_root      = m_attrib.y + event.y;
     event.same_screen = True;
     event.send_event  = True;
     event.state       = 0;
     event.button      = Button1;
+    FindSubWindow(event.x, event.y, event.window, ButtonPressMask | ButtonReleaseMask);
+
 
     event.type        = ButtonPress;
-    XSendEvent(m_display, m_window, True, ButtonPressMask, (XEvent *)&event);
+    XSendEvent(m_display, event.window, True, ButtonPressMask, (XEvent *)&event);
     XSync(m_display, false);
 
     event.time       += 1000;
     event.state       = Button1Mask;
     event.type        = ButtonRelease;
-    XSendEvent(m_display, m_window, True, ButtonReleaseMask, (XEvent *)&event);
+    XSendEvent(m_display, event.window, True, ButtonReleaseMask, (XEvent *)&event);
     XSync(m_display, false);
-
-
-    crossev.time+= 2000;
-    crossev.type =LeaveNotify;
-    XSendEvent(m_display,m_window,True,EnterWindowMask|LeaveWindowMask,(XEvent*)&crossev);
-    XSync(m_display,false);
 
     return EVENT_RESULT_HANDLED;
   }
