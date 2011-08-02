@@ -26,6 +26,7 @@ class CGUIExternalAppControl: public CGUIControl
   GLXPixmap         m_pixmap_gl;
   Pixmap            m_pixmap;
   GLuint            m_texture;
+  unsigned int      m_texture_format;
   XWindowAttributes m_attrib;
   GLXFBConfig       m_config;
   CRect             m_rect;

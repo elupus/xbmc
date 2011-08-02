@@ -51,12 +51,19 @@ CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, floa
 
   memset(&m_attrib, 0, sizeof(m_attrib));
   glGenTextures(1, &m_texture);
+
+  m_display = XOpenDisplay(XDisplayString(g_Windowing.GetDisplay()));
+  m_screen  = XDefaultScreen(m_display);
+  m_root    = XDefaultRootWindow(m_display);
+
   SetWindow(0x3a0006e);
 }
 
 CGUIExternalAppControl::~CGUIExternalAppControl()
 {
-
+  Dispose();
+  glDeleteTextures(1, &m_texture);
+  XCloseDisplay(m_display);
 }
 
 void CGUIExternalAppControl::Dispose()
@@ -64,13 +71,13 @@ void CGUIExternalAppControl::Dispose()
 
   if(m_pixmap_gl)
   {
-    glXDestroyPixmap(g_Windowing.GetDisplay(), m_pixmap_gl);
+    glXDestroyPixmap(m_display, m_pixmap_gl);
     m_pixmap_gl = None;
   }
 
   if(m_pixmap)
   {
-    XFreePixmap(g_Windowing.GetDisplay(), m_pixmap);
+    XFreePixmap(m_display, m_pixmap);
     m_pixmap = None;
   }
 
@@ -89,10 +96,6 @@ bool CGUIExternalAppControl::SetWindow(Window window)
   if(m_glXBindTexImageEXT    == NULL
   || m_glXReleaseTexImageEXT == NULL)
     return false;
-
-  m_display = g_Windowing.GetDisplay();
-  m_screen  = DefaultScreen(m_display);
-  m_root    = XDefaultRootWindow(m_display);
 
   float top = 0.0f, bottom = 0.0f;
 
@@ -124,14 +127,18 @@ bool CGUIExternalAppControl::SetWindow(Window window)
     glXGetFBConfigAttrib (m_display, fbconfigs[i],
         GLX_BIND_TO_TEXTURE_RGBA_EXT,
         &value);
-    if (value == 0)
+    if (value)
+      m_texture_format = GLX_TEXTURE_FORMAT_RGBA_EXT;
+    else
     {
       glXGetFBConfigAttrib (m_display, fbconfigs[i],
           GLX_BIND_TO_TEXTURE_RGB_EXT,
           &value);
       if (value == 0)
         continue;
+      m_texture_format = GLX_TEXTURE_FORMAT_RGB_EXT;
     }
+
 
     glXGetFBConfigAttrib (m_display, fbconfigs[i],
         GLX_Y_INVERTED_EXT,
@@ -169,10 +176,9 @@ bool CGUIExternalAppControl::SetWindow(Window window)
   m_vertex[3].v = bottom;
   m_vertex[3].z = 0.0f;
 
-
   XCompositeRedirectWindow(m_display, window, CompositeRedirectAutomatic);
   XCompositeRedirectSubwindows(m_display, window, CompositeRedirectAutomatic);
-
+  XSelectInput(m_display, window, LeaveWindowMask | EnterWindowMask);
   return true;
 }
 
@@ -189,30 +195,65 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
     return;
   }
 
-  /* if we loose focus, we must refocus window */
-  if(m_active != None && !HasFocus())
-    m_active = None;
+  XEvent event;
+  while(XCheckWindowEvent(m_display, m_window, LeaveWindowMask | EnterWindowMask, &event))
+  {
+    if(event.type == LeaveNotify)
+    {
+      if(event.xcrossing.window == m_window
+      && event.xcrossing.detail == NotifyNonlinear)
+        m_active = None;
+    }
+
+  }
 
   /* check for invalidated pixmap */
   XWindowAttributes attrib;
   XGetWindowAttributes (m_display, m_window, &attrib);
-  if(attrib.width  != m_attrib.width
-  || attrib.height != m_attrib.height)
+  if(attrib.width     != m_attrib.width
+  || attrib.height    != m_attrib.height
+  || attrib.map_state != m_attrib.map_state)
     Dispose();
-
-  m_attrib = attrib;
 
   if (m_pixmap == None)
   {
-    m_pixmap = XCompositeNameWindowPixmap (m_display, m_window);
+    //XGrabServer(m_display);
+    XGetWindowAttributes (m_display, m_window, &attrib);
+
+#if(1)
+    if(attrib.map_state == IsUnmapped)
+    {
+      XSetWindowAttributes attr = {};
+      if(attrib.override_redirect == False)
+      {
+        attr.override_redirect = True;
+        XChangeWindowAttributes(m_display, m_window, CWOverrideRedirect, &attr);
+      }
+      XMapWindow(m_display, m_window);
+      if(attrib.override_redirect == False)
+      {
+        attr.override_redirect = False;
+        XChangeWindowAttributes(m_display, m_window, CWOverrideRedirect, &attr);
+      }
+      XGetWindowAttributes (m_display, m_window, &attrib);
+    }
+#endif
+
+    if(attrib.map_state == IsViewable)
+      m_pixmap = XCompositeNameWindowPixmap (m_display, m_window);
+
+    //XUngrabServer(m_display);
+
     if (m_pixmap == None)
       return;
   }
 
+  m_attrib = attrib;
+
   if(m_pixmap_gl == None)
   {
     int pixmapAttribs[] = { GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-                            GLX_TEXTURE_FORMAT_EXT, GLX_TEXTURE_FORMAT_RGBA_EXT,
+                            GLX_TEXTURE_FORMAT_EXT, m_texture_format,
                             None };
     m_pixmap_gl = glXCreatePixmap (m_display, m_config, m_pixmap, pixmapAttribs);
     if(m_pixmap_gl == None)
@@ -260,6 +301,9 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
 
 void CGUIExternalAppControl::Render()
 {
+  if(m_pixmap_gl == None)
+    return;
+
   glEnable(GL_TEXTURE_2D);
   glBindTexture (GL_TEXTURE_2D, m_texture);
 
@@ -533,7 +577,15 @@ EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMo
     { // grab exclusive access
       CGUIMessage msg(GUI_MSG_EXCLUSIVE_MOUSE, GetID(), GetParentID());
       SendWindowMessage(msg);
-      //XGrabPointer(m_display, m_active, Button1, True, ButtonReleaseMask | PointerMotionMask)
+#if(0)
+      XGrabButton(m_display, AnyButton, AnyModifier
+                 , m_window, True
+                 , ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | PointerMotionMask
+                 , GrabModeAsync
+                 , GrabModeAsync
+                 , None
+                 , None);
+#endif
       SendButtonEvent(x, y, ButtonPress  , Button1);
     }
     else if(event.m_state == 3)
