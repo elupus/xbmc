@@ -197,14 +197,31 @@ void CGUIExternalAppControl::Resize()
   XResizeWindow(m_display, m_window, width, height);
 }
 
-void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
+bool CGUIExternalAppControl::PreparePixmaps()
 {
-  if(m_window == None) {
-    return;
-  }
+  if (m_pixmap == None)
+  {
+    m_pixmap = XCompositeNameWindowPixmap (m_display, m_window);
 
+    if (m_pixmap == None)
+      return false;
+  }
+  if(m_pixmap_gl == None)
+  {
+    int pixmapAttribs[] = { GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
+                            GLX_TEXTURE_FORMAT_EXT, m_texture_format,
+                            None };
+    m_pixmap_gl = glXCreatePixmap (m_display, m_config, m_pixmap, pixmapAttribs);
+    if(m_pixmap_gl == None)
+      return false;
+  }
+  return true;
+}
+
+bool CGUIExternalAppControl::ProcessEvents()
+{
   XEvent event;
-  bool   dirty = false;
+  bool dirty = false;
   while(XCheckWindowEvent(m_display, m_window, LeaveWindowMask | EnterWindowMask | StructureNotifyMask, &event))
   {
     if(event.type == LeaveNotify)
@@ -225,37 +242,30 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
     {
       Dispose();
       m_window = None;
-      return;
+      return false;
     }
   }
-
-  if(dirty)
-  {
-    XErrorHandler handler = XSetErrorHandler(XErrorHandlerIgnore);
-    XGetWindowAttributes (m_display, m_window, &m_attrib);
-    XSetErrorHandler(handler); /* restore old handler */
+  if(dirty){
+      XErrorHandler handler = XSetErrorHandler(XErrorHandlerIgnore);
+      XGetWindowAttributes(m_display, m_window, &m_attrib);
+      XSetErrorHandler(handler); /* restore old handler */
   }
+  return true;
+}
+
+void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
+{
+  if(m_window == None)
+    return;
+
+  if(!ProcessEvents())
+    return;
 
   if(m_attrib.map_state != IsViewable)
     return;
 
-  if (m_pixmap == None)
-  {
-    m_pixmap = XCompositeNameWindowPixmap (m_display, m_window);
-
-    if (m_pixmap == None)
-      return;
-  }
-
-  if(m_pixmap_gl == None)
-  {
-    int pixmapAttribs[] = { GLX_TEXTURE_TARGET_EXT, GLX_TEXTURE_2D_EXT,
-                            GLX_TEXTURE_FORMAT_EXT, m_texture_format,
-                            None };
-    m_pixmap_gl = glXCreatePixmap (m_display, m_config, m_pixmap, pixmapAttribs);
-    if(m_pixmap_gl == None)
-      return;
-  }
+  if(!PreparePixmaps())
+    return;
 
   float scale_x = m_width  / m_attrib.width;
   float scale_y = m_height / m_attrib.height;
@@ -561,7 +571,7 @@ void CGUIExternalAppControl::SendButtonEvent(int x, int y, unsigned int type, un
 EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMouseEvent &event)
 {
   if(m_window == None)
-    return true;
+    return EVENT_RESULT_UNHANDLED;
 
   int x, y;
   if(!GetCoordinates(x, y, point))

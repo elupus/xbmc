@@ -65,6 +65,8 @@ public:
   void Resize();
   void Dispose();
   bool SetWindow(Window window);
+  bool PreparePixmaps();
+  bool ProcessEvents();
 };
 
 #endif /* CGUIEXTERNALAPPCONTROL_H_ */
