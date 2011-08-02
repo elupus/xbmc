@@ -418,6 +418,32 @@ bool CGUIExternalAppControl::OnAction(const CAction &action)
     g_charsetConverter.wToUTF8(wide, utf8);
     SendKeyPress(XStringToKeysym(utf8.c_str()));
   }
+  else if (action.GetID() >= KEY_VKEY && action.GetID() < KEY_ASCII)
+  {
+    struct SVirtualToSym {
+      unsigned     vkey;
+      KeySym       sym;
+    } actions[] = {
+        {XBMCK_UP   , XK_Up},
+        {XBMCK_DOWN , XK_Down},
+        {XBMCK_LEFT , XK_Left},
+        {XBMCK_RIGHT, XK_Right},
+        {XBMCK_HOME , XK_Home},
+        {XBMCK_END  , XK_End},
+        {0          , 0},
+    };
+
+    unsigned int vkey = action.GetID() & 0xFF;
+    for(SVirtualToSym* it = actions; it->vkey; ++it)
+    {
+      if(it->vkey == action.GetID())
+      {
+        SendKeyPress(it->sym);
+        return true;
+      }
+    }
+
+  }
   else
   {
     struct SActionToSym {
