@@ -33,6 +33,14 @@
 #include <GL/glx.h>
 #include <X11/extensions/Xcomposite.h>
 
+static int XErrorHandlerIgnore( Display *dpy, XErrorEvent *e )
+{
+    char error_desc[1024];
+    XGetErrorText(dpy,e->error_code,error_desc,sizeof(error_desc));
+    CLog::Log(LOGERROR, "CGUIExternalAppControl - X Error: %s\n", error_desc);
+    return 0;
+}
+
 CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, float posX, float posY, float width, float height)
  : CGUIControl(parentID, controlID, posX, posY, width, height)
  , m_window(None)
@@ -40,7 +48,7 @@ CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, floa
  , m_pixmap_gl(None)
  , m_pixmap(None)
  , m_texture(0)
- , m_button_state(Mod2Mask)
+ , m_button_state(0)
 {
   m_glXBindTexImageEXT    = (PFNGLXBINDTEXIMAGEEXTPROC)glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
   m_glXReleaseTexImageEXT = (PFNGLXRELEASETEXIMAGEEXTPROC)glXGetProcAddress((GLubyte *) "glXReleaseTexImageEXT");
@@ -178,7 +186,7 @@ bool CGUIExternalAppControl::SetWindow(Window window)
 
   XCompositeRedirectWindow(m_display, window, CompositeRedirectAutomatic);
   XCompositeRedirectSubwindows(m_display, window, CompositeRedirectAutomatic);
-  XSelectInput(m_display, window, LeaveWindowMask | EnterWindowMask);
+  XSelectInput(m_display, window, LeaveWindowMask | EnterWindowMask | StructureNotifyMask);
   return true;
 }
 
@@ -196,59 +204,48 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
   }
 
   XEvent event;
-  while(XCheckWindowEvent(m_display, m_window, LeaveWindowMask | EnterWindowMask, &event))
+  bool   dirty = false;
+  while(XCheckWindowEvent(m_display, m_window, LeaveWindowMask | EnterWindowMask | StructureNotifyMask, &event))
   {
     if(event.type == LeaveNotify)
     {
-      if(event.xcrossing.window == m_window
-      && event.xcrossing.detail == NotifyNonlinear)
+      if(event.xcrossing.detail == NotifyNonlinear
+      || event.xcrossing.detail == NotifyNonlinearVirtual
+      || event.xcrossing.detail == NotifyVirtual)
         m_active = None;
     }
-
+    else if(event.type == ConfigureNotify
+         || event.type == MapNotify
+         || event.type == UnmapNotify)
+    {
+      Dispose();
+      dirty = true;
+    }
+    else if(event.type == DestroyNotify)
+    {
+      Dispose();
+      m_window = None;
+      return;
+    }
   }
 
-  /* check for invalidated pixmap */
-  XWindowAttributes attrib;
-  XGetWindowAttributes (m_display, m_window, &attrib);
-  if(attrib.width     != m_attrib.width
-  || attrib.height    != m_attrib.height
-  || attrib.map_state != m_attrib.map_state)
-    Dispose();
+  if(dirty)
+  {
+    XErrorHandler handler = XSetErrorHandler(XErrorHandlerIgnore);
+    XGetWindowAttributes (m_display, m_window, &m_attrib);
+    XSetErrorHandler(handler); /* restore old handler */
+  }
+
+  if(m_attrib.map_state != IsViewable)
+    return;
 
   if (m_pixmap == None)
   {
-    //XGrabServer(m_display);
-    XGetWindowAttributes (m_display, m_window, &attrib);
-
-#if(1)
-    if(attrib.map_state == IsUnmapped)
-    {
-      XSetWindowAttributes attr = {};
-      if(attrib.override_redirect == False)
-      {
-        attr.override_redirect = True;
-        XChangeWindowAttributes(m_display, m_window, CWOverrideRedirect, &attr);
-      }
-      XMapWindow(m_display, m_window);
-      if(attrib.override_redirect == False)
-      {
-        attr.override_redirect = False;
-        XChangeWindowAttributes(m_display, m_window, CWOverrideRedirect, &attr);
-      }
-      XGetWindowAttributes (m_display, m_window, &attrib);
-    }
-#endif
-
-    if(attrib.map_state == IsViewable)
-      m_pixmap = XCompositeNameWindowPixmap (m_display, m_window);
-
-    //XUngrabServer(m_display);
+    m_pixmap = XCompositeNameWindowPixmap (m_display, m_window);
 
     if (m_pixmap == None)
       return;
   }
-
-  m_attrib = attrib;
 
   if(m_pixmap_gl == None)
   {
@@ -465,6 +462,9 @@ bool CGUIExternalAppControl::GetCoordinates(int& x, int& y, const CPoint &point)
 
 bool CGUIExternalAppControl::OnMouseOver(const CPoint &point)
 {
+  if(m_window == None)
+    return true;
+
   int x, y;
   if(!GetCoordinates(x, y, point))
     return true;
@@ -477,7 +477,7 @@ bool CGUIExternalAppControl::OnMouseOver(const CPoint &point)
     m_active = m_window;
   }
 
-  if(m_active != current && m_button_state == 0)
+  if(m_active != current && (m_button_state && Button1Mask) == 0)
   {
 
     if(IsParent(current, m_active))
@@ -556,11 +556,13 @@ void CGUIExternalAppControl::SendButtonEvent(int x, int y, unsigned int type, un
   XTranslateCoordinates(m_display, m_window, event.root  , x, y, &event.x_root, &event.y_root, &child);
   XTranslateCoordinates(m_display, m_window, event.window, x, y, &event.x     , &event.y     , &child);
   XSendEvent(m_display, event.window, True, mask, (XEvent *)&event);
-  XSync(m_display, False);
 }
 
 EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMouseEvent &event)
 {
+  if(m_window == None)
+    return true;
+
   int x, y;
   if(!GetCoordinates(x, y, point))
     return EVENT_RESULT_UNHANDLED;
