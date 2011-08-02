@@ -1313,6 +1313,7 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
   else if (type == CGUIControl::GUICONTROL_EXTERNAL_APP)
   {
     control = new CGUIExternalAppControl(parentID, id, posX, posY, width, height);
+    ((CGUIExternalAppControl*)control)->SetWindow(strLabel);
   }
 
   // things that apply to all controls

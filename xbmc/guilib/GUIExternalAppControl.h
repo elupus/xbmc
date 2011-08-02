@@ -65,6 +65,7 @@ public:
   void Resize();
   void Dispose();
   bool SetWindow(Window window);
+  bool SetWindow(const CStdString& window_class, Window parent = None);
   bool PreparePixmaps();
   bool ProcessEvents();
 };

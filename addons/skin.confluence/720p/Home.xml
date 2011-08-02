@@ -1063,6 +1063,7 @@
 			<posy>140</posy>
 			<width>600</width>
 			<height>600</height>
+			<label>chromium-browser</label>
 		</control>		
 	</controls>	
 </window>

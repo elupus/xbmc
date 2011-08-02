@@ -63,8 +63,6 @@ CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, floa
   m_display = XOpenDisplay(XDisplayString(g_Windowing.GetDisplay()));
   m_screen  = XDefaultScreen(m_display);
   m_root    = XDefaultRootWindow(m_display);
-
-  SetWindow(0x3a0006e);
 }
 
 CGUIExternalAppControl::~CGUIExternalAppControl()
@@ -96,6 +94,40 @@ void CGUIExternalAppControl::Dispose()
   }
 }
 
+bool CGUIExternalAppControl::SetWindow(const CStdString& window_class, Window parent)
+{
+  Window root, parent2, *children;
+
+  if(parent == None)
+    parent = m_root;
+
+  XClassHint hint;
+  if(XGetClassHint(m_display, parent, &hint))
+  {
+    CStdString cls(hint.res_name);
+    XFree(hint.res_class);
+    XFree(hint.res_name);
+
+    if(cls == window_class && SetWindow(parent))
+      return true;
+  }
+
+  unsigned int count;
+  if(XQueryTree(m_display, parent, &root, &parent2, &children, &count) == 0)
+    return false;
+
+  /* look through sub children */
+  for(unsigned i = 0; i < count; ++i)
+  {
+    if(SetWindow(window_class, children[i]))
+    {
+      XFree(children);
+      return true;
+    }
+  }
+  XFree(children);
+  return false;
+}
 
 bool CGUIExternalAppControl::SetWindow(Window window)
 {
@@ -110,6 +142,9 @@ bool CGUIExternalAppControl::SetWindow(Window window)
   XVisualInfo* visinfo;
 
   XGetWindowAttributes (m_display, window, &m_attrib);
+
+  if(m_attrib.map_state != IsViewable)
+    return false;
 
   VisualID visualid = XVisualIDFromVisual (m_attrib.visual);
 
