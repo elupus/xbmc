@@ -40,6 +40,7 @@ CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, floa
  , m_pixmap_gl(None)
  , m_pixmap(None)
  , m_texture(0)
+ , m_button_state(Mod2Mask)
 {
   m_glXBindTexImageEXT    = (PFNGLXBINDTEXIMAGEEXTPROC)glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
   m_glXReleaseTexImageEXT = (PFNGLXRELEASETEXIMAGEEXTPROC)glXGetProcAddress((GLubyte *) "glXReleaseTexImageEXT");
@@ -50,7 +51,7 @@ CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, floa
 
   memset(&m_attrib, 0, sizeof(m_attrib));
   glGenTextures(1, &m_texture);
-
+  SetWindow(0x3a0006e);
 }
 
 CGUIExternalAppControl::~CGUIExternalAppControl()
@@ -91,6 +92,7 @@ bool CGUIExternalAppControl::SetWindow(Window window)
 
   m_display = g_Windowing.GetDisplay();
   m_screen  = DefaultScreen(m_display);
+  m_root    = XDefaultRootWindow(m_display);
 
   float top = 0.0f, bottom = 0.0f;
 
@@ -187,6 +189,10 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
     return;
   }
 
+  /* if we loose focus, we must refocus window */
+  if(m_active != None && !HasFocus())
+    m_active = None;
+
   /* check for invalidated pixmap */
   XWindowAttributes attrib;
   XGetWindowAttributes (m_display, m_window, &attrib);
@@ -232,7 +238,6 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
   y = m_posY + m_height * 0.5 - h * 0.5;
 
   m_rect.SetRect(x, y, x + w, y + h);
-  m_rect -= CPoint(m_posX, m_posY);
 
   m_vertex[0].x = x;
   m_vertex[0].y = y;
@@ -291,29 +296,24 @@ void CGUIExternalAppControl::Render()
   glDisable(GL_TEXTURE_2D);
 }
 
-void CGUIExternalAppControl::FillXKeyEvent(XKeyEvent& event)
+void CGUIExternalAppControl::SendKeyPress(KeySym sym)
 {
+  XKeyEvent event = {0};
   event.display     = m_display;
   event.window      = m_window;
-  event.root        = XDefaultRootWindow(m_display);
+  event.root        = m_root;
   event.subwindow   = None;
-  event.time        = 0;
   event.x           = 1;
   event.y           = 1;
   event.x_root      = 1;
   event.y_root      = 1;
   event.same_screen = True;
-}
-
-void CGUIExternalAppControl::SendKeyPress(KeySym sym)
-{
-  XKeyEvent event = {0};
-  FillXKeyEvent(event);
   event.keycode     = XKeysymToKeycode(m_display, sym);
+
+  event.time        = CurrentTime;
   event.state       = 0;
   event.type        = KeyPress;
   XSendEvent(m_display, m_window, True, KeyPressMask, (XEvent *)&event);
-  event.time       += 100;
   event.state      |= KeyPressMask;
   event.type        = KeyRelease;
   XSendEvent(m_display, m_window, True, KeyReleaseMask, (XEvent *)&event);
@@ -357,18 +357,19 @@ bool CGUIExternalAppControl::OnAction(const CAction &action)
   return CGUIControl::OnAction(action);
 }
 
-bool CGUIExternalAppControl::FindSubWindow(int& x, int& y, Window& w, long mask)
+Window CGUIExternalAppControl::FindSubWindow(int x, int y)
 {
-  Window dst, child;
-  dst   = w;
+  Window src, dst, child;
+  dst   = m_window;
+  src   = m_window;
   while(dst != None)
   {
-    if(!XTranslateCoordinates(m_display, w, dst  , x, y, &x, &y, &child))
-      return false;
-    w   = dst;
+    if(!XTranslateCoordinates(m_display, src, dst  , x, y, &x, &y, &child))
+      return None;
+    src = dst;
     dst = child;
   }
-  return true;
+  return src;
 }
 
 bool CGUIExternalAppControl::IsParent(Window parent, Window child)
@@ -389,49 +390,42 @@ bool CGUIExternalAppControl::IsParent(Window parent, Window child)
 
 void CGUIExternalAppControl::SendCrossingEvent(int x, int y, Window window, int type, int detail)
 {
-  XCrossingEvent crossev = {0};
-  crossev.display       = m_display;
-  crossev.root          = XDefaultRootWindow(m_display);;
-  crossev.window        = window;
-  XTranslateCoordinates(m_display, m_window, window, x, y, &crossev.x, &crossev.y, &crossev.subwindow);
-  crossev.x_root        = m_attrib.x + x;
-  crossev.y_root        = m_attrib.y + y;
-  crossev.mode          = NotifyNormal;
-  crossev.same_screen   = True;
-  crossev.focus         = false;
-  crossev.state         = 0;
-  crossev.time          = 0;
-  crossev.detail        = detail;
-  crossev.type          = type;
+  XCrossingEvent ev = {0};
+  ev.display       = m_display;
+  ev.root          = m_root;
+  ev.window        = window;
+  XTranslateCoordinates(m_display, m_window, ev.root  , x, y, &ev.x_root, &ev.y_root, &ev.subwindow);
+  XTranslateCoordinates(m_display, m_window, ev.window, x, y, &ev.x     , &ev.     y, &ev.subwindow);
+  ev.mode          = NotifyNormal;
+  ev.same_screen   = True;
+  ev.focus         = True;
+  ev.state         = m_button_state;
+  ev.time          = CurrentTime;
+  ev.detail        = detail;
+  ev.type          = type;
   if(type == EnterNotify)
-    XSendEvent(m_display,window,True,EnterWindowMask,(XEvent*)&crossev);
+    XSendEvent(m_display,window,True,EnterWindowMask,(XEvent*)&ev);
   else
-    XSendEvent(m_display,window,True,LeaveWindowMask,(XEvent*)&crossev);
+    XSendEvent(m_display,window,True,LeaveWindowMask,(XEvent*)&ev);
+}
+
+bool CGUIExternalAppControl::GetCoordinates(int& x, int& y, const CPoint &point)
+{
+  if(!m_rect.PtInRect(point))
+    return false;
+
+  x = MathUtils::round_int((point.x - m_rect.x1) / m_rect.Width()  * m_attrib.width);
+  y = MathUtils::round_int((point.y - m_rect.y1) / m_rect.Height() * m_attrib.height);
+  return true;
 }
 
 bool CGUIExternalAppControl::OnMouseOver(const CPoint &point)
 {
-  if(!m_rect.PtInRect(point))
+  int x, y;
+  if(!GetCoordinates(x, y, point))
     return true;
 
-  int x = MathUtils::round_int((point.x - m_rect.x1) / m_rect.Width()  * m_attrib.width);
-  int y = MathUtils::round_int((point.y - m_rect.y1) / m_rect.Height() * m_attrib.height);
-
-  XMotionEvent event = {0};
-  event.display       = m_display;
-  event.window        = m_window;
-  event.root          = XDefaultRootWindow(m_display);;
-  event.subwindow     = None;
-  event.time          = 0;
-  event.x             = x;
-  event.y             = y;
-  event.x_root        = m_attrib.x + event.x;
-  event.y_root        = m_attrib.y + event.y;
-  event.same_screen   = True;
-  event.is_hint       = 0;
-  event.state         = 0;
-  event.type          = MotionNotify;
-  FindSubWindow(event.x, event.y, event.window, PointerMotionMask);
+  Window current = FindSubWindow(x, y);
 
   if(m_active == None)
   {
@@ -439,71 +433,115 @@ bool CGUIExternalAppControl::OnMouseOver(const CPoint &point)
     m_active = m_window;
   }
 
-  if(m_active != event.window)
+  if(m_active != current && m_button_state == 0)
   {
 
-    if(IsParent(event.window, m_active))
+    if(IsParent(current, m_active))
     {
       SendCrossingEvent(x, y, m_active    , LeaveNotify, NotifyAncestor);
-      SendCrossingEvent(x, y, event.window, EnterNotify, NotifyInferior);
+      SendCrossingEvent(x, y, current     , EnterNotify, NotifyInferior);
     }
-    else if(IsParent(m_active, event.window))
+    else if(IsParent(m_active, current))
     {
       SendCrossingEvent(x, y, m_active    , LeaveNotify, NotifyInferior);
-      SendCrossingEvent(x, y, event.window, EnterNotify, NotifyAncestor);
+      SendCrossingEvent(x, y, current     , EnterNotify, NotifyAncestor);
     }
     else
     {
       SendCrossingEvent(x, y, m_active    , LeaveNotify, NotifyNonlinear);
-      SendCrossingEvent(x, y, event.window, EnterNotify, NotifyNonlinear);
+      SendCrossingEvent(x, y, current     , EnterNotify, NotifyNonlinear);
     }
-    m_active = event.window;
+    m_active = current;
   }
 
+  XMotionEvent event = {0};
+  event.display       = m_display;
+  event.window        = m_active;
+  event.root          = m_root;
+  event.subwindow     = None;
+  event.time          = CurrentTime;
+  event.same_screen   = True;
+  event.is_hint       = 0;
+  event.state         = m_button_state;
+  event.type          = MotionNotify;
+
+  XTranslateCoordinates(m_display, m_window, event.root  , x, y, &event.x_root, &event.y_root, &current);
+  XTranslateCoordinates(m_display, m_window, event.window, x, y, &event.x     , &event.y     , &current);
   XSendEvent(m_display,event.window,True,PointerMotionMask,(XEvent*)&event);
 
   return CGUIControl::OnMouseOver(point);
 }
 
+void CGUIExternalAppControl::SendButtonEvent(int x, int y, unsigned int type, unsigned int button)
+{
+  XButtonEvent event = {0};
+  event.display     = m_display;
+  event.window      = m_active;
+  event.root        = m_root;
+  event.time        = CurrentTime;
+  event.same_screen = True;
+  event.send_event  = True;
+  event.state       = m_button_state;
+  event.button      = button;
+  event.type        = type;
+
+  unsigned int state;
+  switch(button)
+  {
+    case Button1: state = Button1Mask; break;
+    case Button2: state = Button2Mask; break;
+    case Button3: state = Button3Mask; break;
+    case Button4: state = Button4Mask; break;
+    case Button5: state = Button5Mask; break;
+    default:      state = 0;           break;
+  }
+
+  unsigned int mask;
+  if(type == ButtonPress)
+  {
+    mask = ButtonPressMask;
+    m_button_state |= state;
+  }
+  else
+  {
+    mask = ButtonReleaseMask;
+    m_button_state &= ~state;
+  }
+
+  Window child;
+  XTranslateCoordinates(m_display, m_window, event.root  , x, y, &event.x_root, &event.y_root, &child);
+  XTranslateCoordinates(m_display, m_window, event.window, x, y, &event.x     , &event.y     , &child);
+  XSendEvent(m_display, event.window, True, mask, (XEvent *)&event);
+  XSync(m_display, False);
+}
+
 EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMouseEvent &event)
 {
-  if(!m_rect.PtInRect(point))
+  int x, y;
+  if(!GetCoordinates(x, y, point))
     return EVENT_RESULT_UNHANDLED;
-
-  int x = MathUtils::round_int((point.x - m_rect.x1) / m_rect.Width()  * m_attrib.width);
-  int y = MathUtils::round_int((point.y - m_rect.y1) / m_rect.Height() * m_attrib.height);
 
   if (event.m_id == ACTION_MOUSE_LEFT_CLICK)
   {
-    XButtonEvent event = {0};
-
-    event.display     = m_display;
-    event.window      = m_window;
-    event.root        = XDefaultRootWindow(m_display);
-    event.subwindow   = None;
-    event.time        = 0;
-    event.x           = x;
-    event.y           = y;
-    event.x_root      = m_attrib.x + event.x;
-    event.y_root      = m_attrib.y + event.y;
-    event.same_screen = True;
-    event.send_event  = True;
-    event.state       = 0;
-    event.button      = Button1;
-    FindSubWindow(event.x, event.y, event.window, ButtonPressMask | ButtonReleaseMask);
-
-
-    event.type        = ButtonPress;
-    XSendEvent(m_display, event.window, True, ButtonPressMask, (XEvent *)&event);
-    XSync(m_display, false);
-
-    event.time       += 1000;
-    event.state       = Button1Mask;
-    event.type        = ButtonRelease;
-    XSendEvent(m_display, event.window, True, ButtonReleaseMask, (XEvent *)&event);
-    XSync(m_display, false);
-
+    SendButtonEvent(x, y, ButtonPress  , Button1);
+    SendButtonEvent(x, y, ButtonRelease, Button1);
     return EVENT_RESULT_HANDLED;
+  }
+  else if(event.m_id == ACTION_MOUSE_DRAG)
+  {
+    if(event.m_state == 1)
+    { // grab exclusive access
+      CGUIMessage msg(GUI_MSG_EXCLUSIVE_MOUSE, GetID(), GetParentID());
+      SendWindowMessage(msg);
+      //XGrabPointer(m_display, m_active, Button1, True, ButtonReleaseMask | PointerMotionMask)
+      SendButtonEvent(x, y, ButtonPress  , Button1);
+    }
+    else if(event.m_state == 3)
+    { // release exclusive access
+      CGUIMessage msg(GUI_MSG_EXCLUSIVE_MOUSE, 0, GetParentID());
+      SendWindowMessage(msg);
+      SendButtonEvent(x, y, ButtonRelease, Button1);
+    }
   }
   return EVENT_RESULT_UNHANDLED;
 }

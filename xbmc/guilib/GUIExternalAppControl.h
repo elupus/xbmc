@@ -22,12 +22,15 @@ class CGUIExternalAppControl: public CGUIControl
 
   Window            m_window;
   Window            m_active;
+  Window            m_root;
   GLXPixmap         m_pixmap_gl;
   Pixmap            m_pixmap;
   GLuint            m_texture;
   XWindowAttributes m_attrib;
   GLXFBConfig       m_config;
   CRect             m_rect;
+
+  unsigned int      m_button_state;
 
   struct SVertex
   {
@@ -51,11 +54,13 @@ public:
 
   bool IsParent(Window parent, Window child);
 
-  void SendCrossingEvent(int x, int y, Window window, int type, int detail);
+  bool GetCoordinates(int& x, int& y, const CPoint& point);
 
-  bool FindSubWindow(int& x, int& y, Window& w, long mask);
-  void FillXKeyEvent(XKeyEvent& event);
+  void SendButtonEvent  (int x, int y, unsigned int type, unsigned int button);
+  void SendCrossingEvent(int x, int y, Window window, int type, int detail);
   void SendKeyPress(KeySym sym);
+
+  Window FindSubWindow(int x, int y);
   void Resize();
   void Dispose();
   bool SetWindow(Window window);
