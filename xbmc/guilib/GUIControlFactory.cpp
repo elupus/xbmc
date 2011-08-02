@@ -1310,11 +1310,13 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
   {
     control = new CGUIVisualisationControl(parentID, id, posX, posY, width, height);
   }
+#ifdef HAVE_LIBXCOMPOSITE
   else if (type == CGUIControl::GUICONTROL_EXTERNAL_APP)
   {
     control = new CGUIExternalAppControl(parentID, id, posX, posY, width, height);
     ((CGUIExternalAppControl*)control)->SetWindow(strLabel);
   }
+#endif
 
   // things that apply to all controls
   if (control)

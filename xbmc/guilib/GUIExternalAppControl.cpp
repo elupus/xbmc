@@ -19,6 +19,9 @@
  *
  */
 
+#include "system.h"
+#ifdef HAVE_LIBXCOMPOSITE
+
 #include "GUIExternalAppControl.h"
 #include "windowing/WindowingFactory.h"
 #include "utils/log.h"
@@ -649,3 +652,5 @@ bool CGUIExternalAppControl::OnMessage(CGUIMessage& message)
 {
   return CGUIControl::OnMessage(message);
 }
+
+#endif

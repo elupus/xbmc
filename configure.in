@@ -682,8 +682,9 @@ else
     [INCLUDES="$INCLUDES $XEXT_CFLAGS"; LIBS="$LIBS $XEXT_LIBS"],
     AC_MSG_ERROR($missing_library))
   PKG_CHECK_MODULES([XCOMPOSITE],  [xcomposite],
-    [INCLUDES="$INCLUDES $XCOMPOSITE_CFLAGS"; LIBS="$LIBS $XCOMPOSITE_LIBS"],
-    AC_MSG_ERROR($missing_library))
+    [INCLUDES="$INCLUDES $XCOMPOSITE_CFLAGS"; LIBS="$LIBS $XCOMPOSITE_LIBS"] \
+    AC_DEFINE([HAVE_LIBXCOMPOSITE],[1],["Define to 1 if Xcomposite library is installed"]),
+    AC_MSG_WARN($missing_library))
   PKG_CHECK_MODULES([XMU],   [xmu],
     [INCLUDES="$INCLUDES $XMU_CFLAGS"; LIBS="$LIBS $XMU_LIBS"],
     AC_MSG_ERROR($missing_library))

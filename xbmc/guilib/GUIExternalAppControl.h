@@ -8,6 +8,8 @@
 #ifndef CGUIEXTERNALAPPCONTROL_H_
 #define CGUIEXTERNALAPPCONTROL_H_
 
+#ifdef HAVE_LIBXCOMPOSITE
+
 #include "GUIControl.h"
 #include <GL/gl.h>
 #include <GL/glx.h>
@@ -70,4 +72,5 @@ public:
   bool ProcessEvents();
 };
 
+#endif /* HAS_XCOMPOSITE */
 #endif /* CGUIEXTERNALAPPCONTROL_H_ */
