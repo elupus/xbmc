@@ -34,6 +34,7 @@ class CGUIExternalAppControl: public CGUIControl
   CRect             m_rect;
 
   unsigned int      m_button_state;
+  bool              m_grabbed;
 
   struct SVertex
   {
@@ -49,6 +50,7 @@ public:
   virtual void Process  (unsigned int currentTime, CDirtyRegionList &dirtyregions);
   virtual bool OnAction (const CAction &action) ;
   virtual bool OnMessage(CGUIMessage& message);
+  virtual void OnUnFocus() { m_grabbed = false; }
 
   virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
   virtual bool         OnMouseOver(const CPoint &point);
@@ -57,7 +59,7 @@ public:
 
   bool IsParent(Window parent, Window child);
 
-  bool GetCoordinates(int& x, int& y, const CPoint& point);
+  void GetCoordinates(int& x, int& y, const CPoint& point);
 
   void SendButtonEvent  (int x, int y, unsigned int type, unsigned int button);
   void SendCrossingEvent(int x, int y, Window window, int type, int detail);

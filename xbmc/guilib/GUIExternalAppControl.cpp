@@ -57,8 +57,6 @@ static SCodeToSym g_action_to_keysym[] = {
   {ACTION_MOVE_DOWN            , XK_Down},
   {ACTION_MOVE_LEFT            , XK_Left},
   {ACTION_MOVE_RIGHT           , XK_Right},
-  {ACTION_PAGE_UP              , XK_Page_Up},
-  {ACTION_PAGE_DOWN            , XK_Page_Down},
 #endif
 
   {XBMCVK_UP     | KEY_VKEY    , XK_Up},
@@ -68,13 +66,19 @@ static SCodeToSym g_action_to_keysym[] = {
   {XBMCVK_HOME   | KEY_VKEY    , XK_Home},
   {XBMCVK_END    | KEY_VKEY    , XK_End},
   {XBMCVK_TAB    | KEY_VKEY    , XK_Tab},
-  {XBMCVK_ESCAPE | KEY_VKEY    , XK_Escape},
+//  {XBMCVK_ESCAPE | KEY_VKEY    , XK_Escape}, /* used to leave control */
   {XBMCVK_DELETE | KEY_VKEY    , XK_Delete},
   {XBMCVK_BACK   | KEY_VKEY    , XK_BackSpace},
   {XBMCVK_RETURN | KEY_VKEY    , XK_Return},
   {XBMCVK_SPACE  | KEY_VKEY    , XK_space},
 
   {XBMCK_SPACE   | KEY_ASCII   , XK_space},
+
+  {ACTION_PAGE_UP              , XK_Page_Up},
+  {ACTION_PAGE_DOWN            , XK_Page_Down},
+  {ACTION_NEXT_CONTROL         , XK_Tab},
+  {ACTION_PREV_CONTROL         , XK_Tab, ShiftMask},
+
   {0                           , 0},
 };
 
@@ -86,15 +90,14 @@ static bool ActionToKeysym(const CAction& action, KeySym& sym, unsigned int& sta
     {
       sym   = it->sym;
       state = it->state;
+      return true;
     }
-    return true;
   }
 
   CStdStringW wide;
   CStdString  utf8;
   wide.Format(L"%c", action.GetUnicode());
   g_charsetConverter.wToUTF8(wide, utf8);
-  SCodeToSym res = {};
   sym   = XStringToKeysym(utf8.c_str());
   state = 0;
   if(sym)
@@ -111,6 +114,7 @@ CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, floa
  , m_pixmap(None)
  , m_texture(0)
  , m_button_state(0)
+ , m_grabbed(0)
 {
   ControlType = GUICONTROL_EXTERNAL_APP;
   m_glXBindTexImageEXT    = (PFNGLXBINDTEXIMAGEEXTPROC)glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
@@ -385,6 +389,7 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
   y = m_posY + m_height * 0.5 - h * 0.5;
 
   m_rect.SetRect(x, y, x + w, y + h);
+  SetHitRect(m_rect);
 
   m_vertex[0].x = x;
   m_vertex[0].y = y;
@@ -432,7 +437,10 @@ void CGUIExternalAppControl::Render()
   glEnable(GL_BLEND);
 
   glBegin (GL_QUADS);
-  glColor4ub(0xff, 0xff, 0xff, 0xff);
+  if(m_grabbed)
+    glColor4ub(0xff, 0xff, 0xff, 0xff);
+  else
+    glColor4ub(0x7f, 0x7f, 0x7f, 0xff);
 
   for(unsigned i = 0; i < 4; ++i)
   {
@@ -472,12 +480,26 @@ void CGUIExternalAppControl::SendKeyPress(KeySym sym, unsigned int state)
 
 bool CGUIExternalAppControl::OnAction(const CAction &action)
 {
-  KeySym       sym;
-  unsigned int state;
-  if(ActionToKeysym(action, sym, state))
+  if(m_grabbed)
   {
-    SendKeyPress(sym, state);
-    return true;
+    if(action.GetID() == ACTION_PREVIOUS_MENU)
+      m_grabbed = false;
+    else
+    {
+      KeySym       sym;
+      unsigned int state;
+      if(ActionToKeysym(action, sym, state))
+      {
+        SendKeyPress(sym, state);
+        return true;
+      }
+    }
+  }
+  else
+  {
+    if(action.GetID() == ACTION_ENTER
+    || action.GetID() == ACTION_SELECT_ITEM)
+      m_grabbed = true;
   }
 
   return CGUIControl::OnAction(action);
@@ -535,14 +557,16 @@ void CGUIExternalAppControl::SendCrossingEvent(int x, int y, Window window, int 
     XSendEvent(m_display,window,True,LeaveWindowMask,(XEvent*)&ev);
 }
 
-bool CGUIExternalAppControl::GetCoordinates(int& x, int& y, const CPoint &point)
+void CGUIExternalAppControl::GetCoordinates(int& x, int& y, const CPoint &point)
 {
-  if(!m_rect.PtInRect(point))
-    return false;
-
-  x = MathUtils::round_int((point.x - m_rect.x1) / m_rect.Width()  * m_attrib.width);
-  y = MathUtils::round_int((point.y - m_rect.y1) / m_rect.Height() * m_attrib.height);
-  return true;
+  if(m_rect.Width())
+    x = MathUtils::round_int((point.x - m_rect.x1) / m_rect.Width()  * m_attrib.width);
+  else
+    x = -1;
+  if(m_rect.Height())
+    y = MathUtils::round_int((point.y - m_rect.y1) / m_rect.Height() * m_attrib.height);
+  else
+    y = -1;
 }
 
 bool CGUIExternalAppControl::OnMouseOver(const CPoint &point)
@@ -551,8 +575,9 @@ bool CGUIExternalAppControl::OnMouseOver(const CPoint &point)
     return true;
 
   int x, y;
-  if(!GetCoordinates(x, y, point))
-    return true;
+  GetCoordinates(x, y, point);
+
+  m_grabbed = true;
 
   Window current = FindSubWindow(x, y);
 
@@ -649,13 +674,32 @@ EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMo
     return EVENT_RESULT_UNHANDLED;
 
   int x, y;
-  if(!GetCoordinates(x, y, point))
-    return EVENT_RESULT_UNHANDLED;
+  GetCoordinates(x, y, point);
 
   if (event.m_id == ACTION_MOUSE_LEFT_CLICK)
   {
     SendButtonEvent(x, y, ButtonPress  , Button1);
     SendButtonEvent(x, y, ButtonRelease, Button1);
+    return EVENT_RESULT_HANDLED;
+  }
+  else if (event.m_id == ACTION_MOUSE_DOUBLE_CLICK)
+  {
+    SendButtonEvent(x, y, ButtonPress  , Button1);
+    SendButtonEvent(x, y, ButtonRelease, Button1);
+    SendButtonEvent(x, y, ButtonPress  , Button1);
+    SendButtonEvent(x, y, ButtonRelease, Button1);
+    return EVENT_RESULT_HANDLED;
+  }
+  else if (event.m_id == ACTION_MOUSE_MIDDLE_CLICK)
+  {
+    SendButtonEvent(x, y, ButtonPress  , Button2);
+    SendButtonEvent(x, y, ButtonRelease, Button2);
+    return EVENT_RESULT_HANDLED;
+  }
+  else if (event.m_id == ACTION_MOUSE_RIGHT_CLICK)
+  {
+    SendButtonEvent(x, y, ButtonPress  , Button3);
+    SendButtonEvent(x, y, ButtonRelease, Button3);
     return EVENT_RESULT_HANDLED;
   }
   else if(event.m_id == ACTION_MOUSE_DRAG)
@@ -681,6 +725,8 @@ EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMo
       SendWindowMessage(msg);
       SendButtonEvent(x, y, ButtonRelease, Button1);
     }
+    else
+      OnMouseOver(point);
   }
   return EVENT_RESULT_UNHANDLED;
 }
