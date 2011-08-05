@@ -61,7 +61,7 @@ public:
 
   void SendButtonEvent  (int x, int y, unsigned int type, unsigned int button);
   void SendCrossingEvent(int x, int y, Window window, int type, int detail);
-  void SendKeyPress(KeySym sym);
+  void SendKeyPress(KeySym sym, unsigned int state);
 
   Window FindSubWindow(int x, int y);
   void Resize();

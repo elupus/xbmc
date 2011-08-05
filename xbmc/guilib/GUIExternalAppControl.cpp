@@ -29,6 +29,7 @@
 #include "Key.h"
 #include "utils/CharsetConverter.h"
 #include "settings/Settings.h"
+#include "input/XBMC_vkeys.h"
 #include <GL/glew.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -47,36 +48,59 @@ static int XErrorHandlerIgnore( Display *dpy, XErrorEvent *e )
 struct SCodeToSym {
   int          code;
   KeySym       sym;
-};
-
-static SCodeToSym g_vkey_to_keysym[] = {
-  {XBMCK_UP   , XK_Up},
-  {XBMCK_DOWN , XK_Down},
-  {XBMCK_LEFT , XK_Left},
-  {XBMCK_RIGHT, XK_Right},
-  {XBMCK_HOME , XK_Home},
-  {XBMCK_END  , XK_End},
-  {0          , 0},
+  unsigned int state;
 };
 
 static SCodeToSym g_action_to_keysym[] = {
-  {ACTION_MOVE_UP   , XK_Up},
-  {ACTION_MOVE_DOWN , XK_Down},
-  {ACTION_MOVE_LEFT , XK_Left},
-  {ACTION_MOVE_RIGHT, XK_Right},
-  {ACTION_PAGE_UP   , XK_Page_Up},
-  {ACTION_PAGE_DOWN , XK_Page_Down},
-  {ACTION_NONE      , 0},
+#if(0)
+  {ACTION_MOVE_UP              , XK_Up},
+  {ACTION_MOVE_DOWN            , XK_Down},
+  {ACTION_MOVE_LEFT            , XK_Left},
+  {ACTION_MOVE_RIGHT           , XK_Right},
+  {ACTION_PAGE_UP              , XK_Page_Up},
+  {ACTION_PAGE_DOWN            , XK_Page_Down},
+#endif
+
+  {XBMCVK_UP     | KEY_VKEY    , XK_Up},
+  {XBMCVK_DOWN   | KEY_VKEY    , XK_Down},
+  {XBMCVK_LEFT   | KEY_VKEY    , XK_Left},
+  {XBMCVK_RIGHT  | KEY_VKEY    , XK_Right},
+  {XBMCVK_HOME   | KEY_VKEY    , XK_Home},
+  {XBMCVK_END    | KEY_VKEY    , XK_End},
+  {XBMCVK_TAB    | KEY_VKEY    , XK_Tab},
+  {XBMCVK_ESCAPE | KEY_VKEY    , XK_Escape},
+  {XBMCVK_DELETE | KEY_VKEY    , XK_Delete},
+  {XBMCVK_BACK   | KEY_VKEY    , XK_BackSpace},
+  {XBMCVK_RETURN | KEY_VKEY    , XK_Return},
+  {XBMCVK_SPACE  | KEY_VKEY    , XK_space},
+
+  {XBMCK_SPACE   | KEY_ASCII   , XK_space},
+  {0                           , 0},
 };
 
-static KeySym CodeToKeysym(SCodeToSym table[], int code)
+static bool ActionToKeysym(const CAction& action, KeySym& sym, unsigned int& state)
 {
-  for(SCodeToSym* it = table; it->sym; ++it)
+  for(SCodeToSym* it = g_action_to_keysym; it->sym; ++it)
   {
-    if(it->code == code)
-      return it->sym;
+    if(it->code == action.GetID())
+    {
+      sym   = it->sym;
+      state = it->state;
+    }
+    return true;
   }
-  return 0;
+
+  CStdStringW wide;
+  CStdString  utf8;
+  wide.Format(L"%c", action.GetUnicode());
+  g_charsetConverter.wToUTF8(wide, utf8);
+  SCodeToSym res = {};
+  sym   = XStringToKeysym(utf8.c_str());
+  state = 0;
+  if(sym)
+    return true;
+  else
+    return false;
 }
 
 CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, float posX, float posY, float width, float height)
@@ -88,6 +112,7 @@ CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, floa
  , m_texture(0)
  , m_button_state(0)
 {
+  ControlType = GUICONTROL_EXTERNAL_APP;
   m_glXBindTexImageEXT    = (PFNGLXBINDTEXIMAGEEXTPROC)glXGetProcAddress((GLubyte *) "glXBindTexImageEXT");
   m_glXReleaseTexImageEXT = (PFNGLXRELEASETEXIMAGEEXTPROC)glXGetProcAddress((GLubyte *) "glXReleaseTexImageEXT");
 
@@ -421,11 +446,8 @@ void CGUIExternalAppControl::Render()
   glDisable(GL_TEXTURE_2D);
 }
 
-void CGUIExternalAppControl::SendKeyPress(KeySym sym)
+void CGUIExternalAppControl::SendKeyPress(KeySym sym, unsigned int state)
 {
-  if(sym == 0)
-    return;
-
   XKeyEvent event = {0};
   event.display     = m_display;
   event.window      = m_window;
@@ -439,10 +461,9 @@ void CGUIExternalAppControl::SendKeyPress(KeySym sym)
   event.keycode     = XKeysymToKeycode(m_display, sym);
 
   event.time        = CurrentTime;
-  event.state       = 0;
+  event.state       = m_button_state | state;
   event.type        = KeyPress;
   XSendEvent(m_display, m_window, True, KeyPressMask, (XEvent *)&event);
-  event.state      |= KeyPressMask;
   event.type        = KeyRelease;
   XSendEvent(m_display, m_window, True, KeyReleaseMask, (XEvent *)&event);
 }
@@ -451,18 +472,13 @@ void CGUIExternalAppControl::SendKeyPress(KeySym sym)
 
 bool CGUIExternalAppControl::OnAction(const CAction &action)
 {
-  if(action.GetID() >= KEY_ASCII && action.GetUnicode())
+  KeySym       sym;
+  unsigned int state;
+  if(ActionToKeysym(action, sym, state))
   {
-    CStdStringW wide;
-    CStdString  utf8;
-    wide.Format(L"%c", action.GetUnicode());
-    g_charsetConverter.wToUTF8(wide, utf8);
-    SendKeyPress(XStringToKeysym(utf8.c_str()));
+    SendKeyPress(sym, state);
+    return true;
   }
-  else if (action.GetID() >= KEY_VKEY && action.GetID() < KEY_ASCII)
-    SendKeyPress(CodeToKeysym(g_vkey_to_keysym  , action.GetID() & 0xFF));
-  else
-    SendKeyPress(CodeToKeysym(g_action_to_keysym, action.GetID()));
 
   return CGUIControl::OnAction(action);
 }

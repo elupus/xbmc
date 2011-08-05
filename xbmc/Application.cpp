@@ -2117,6 +2117,7 @@ bool CApplication::OnKey(const CKey& key)
       if (control)
       {
         if (control->GetControlType() == CGUIControl::GUICONTROL_EDIT ||
+            control->GetControlType() == CGUIControl::GUICONTROL_EXTERNAL_APP ||
            (control->IsContainer() && key.GetModifiers() == CKey::MODIFIER_SHIFT)) // shift and no other modifiers
           useKeyboard = true;
       }
