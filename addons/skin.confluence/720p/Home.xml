@@ -989,7 +989,7 @@
 				<onleft>20</onleft>
 				<onright>20</onright>
 				<onup>9002</onup>
-				<ondown>9003</ondown>
+				<ondown>20000</ondown>
 			</control>
 		</control>
 		<control type="group">
@@ -1058,12 +1058,14 @@
 				<label>[COLOR=grey]$INFO[System.Date][/COLOR] | $INFO[System.Time]</label>
 			</control>
 		</control>
-		<control type="externalapp">
+		<control type="externalapp" id="20000">
 			<posx>0</posx>
-			<posy>140</posy>
-			<width>600</width>
+			<posy>0</posy>
+			<width>1000</width>
 			<height>600</height>
-			<label>chromium-browser</label>
-		</control>		
+			<label2>chromium-browser</label2>
+			<label>Xephyr</label>
+			<onup>21</onup>
+		</control>
 	</controls>	
 </window>
