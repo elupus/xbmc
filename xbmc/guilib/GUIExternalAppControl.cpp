@@ -44,6 +44,41 @@ static int XErrorHandlerIgnore( Display *dpy, XErrorEvent *e )
     return 0;
 }
 
+struct SCodeToSym {
+  int          code;
+  KeySym       sym;
+};
+
+static SCodeToSym g_vkey_to_keysym[] = {
+  {XBMCK_UP   , XK_Up},
+  {XBMCK_DOWN , XK_Down},
+  {XBMCK_LEFT , XK_Left},
+  {XBMCK_RIGHT, XK_Right},
+  {XBMCK_HOME , XK_Home},
+  {XBMCK_END  , XK_End},
+  {0          , 0},
+};
+
+static SCodeToSym g_action_to_keysym[] = {
+  {ACTION_MOVE_UP   , XK_Up},
+  {ACTION_MOVE_DOWN , XK_Down},
+  {ACTION_MOVE_LEFT , XK_Left},
+  {ACTION_MOVE_RIGHT, XK_Right},
+  {ACTION_PAGE_UP   , XK_Page_Up},
+  {ACTION_PAGE_DOWN , XK_Page_Down},
+  {ACTION_NONE      , 0},
+};
+
+static KeySym CodeToKeysym(SCodeToSym table[], int code)
+{
+  for(SCodeToSym* it = table; it->sym; ++it)
+  {
+    if(it->code == code)
+      return it->sym;
+  }
+  return 0;
+}
+
 CGUIExternalAppControl::CGUIExternalAppControl(int parentID, int controlID, float posX, float posY, float width, float height)
  : CGUIControl(parentID, controlID, posX, posY, width, height)
  , m_window(None)
@@ -237,6 +272,10 @@ void CGUIExternalAppControl::Resize()
 
 bool CGUIExternalAppControl::PreparePixmaps()
 {
+  /* if image is not viable, we won't be able to get a working gl pixmap */
+  if(m_attrib.map_state != IsViewable)
+    return false;
+
   if (m_pixmap == None)
   {
     m_pixmap = XCompositeNameWindowPixmap (m_display, m_window);
@@ -297,9 +336,6 @@ void CGUIExternalAppControl::Process(unsigned int currentTime, CDirtyRegionList 
     return;
 
   if(!ProcessEvents())
-    return;
-
-  if(m_attrib.map_state != IsViewable)
     return;
 
   if(!PreparePixmaps())
@@ -387,6 +423,9 @@ void CGUIExternalAppControl::Render()
 
 void CGUIExternalAppControl::SendKeyPress(KeySym sym)
 {
+  if(sym == 0)
+    return;
+
   XKeyEvent event = {0};
   event.display     = m_display;
   event.window      = m_window;
@@ -408,6 +447,8 @@ void CGUIExternalAppControl::SendKeyPress(KeySym sym)
   XSendEvent(m_display, m_window, True, KeyReleaseMask, (XEvent *)&event);
 }
 
+
+
 bool CGUIExternalAppControl::OnAction(const CAction &action)
 {
   if(action.GetID() >= KEY_ASCII && action.GetUnicode())
@@ -419,56 +460,10 @@ bool CGUIExternalAppControl::OnAction(const CAction &action)
     SendKeyPress(XStringToKeysym(utf8.c_str()));
   }
   else if (action.GetID() >= KEY_VKEY && action.GetID() < KEY_ASCII)
-  {
-    struct SVirtualToSym {
-      unsigned     vkey;
-      KeySym       sym;
-    } actions[] = {
-        {XBMCK_UP   , XK_Up},
-        {XBMCK_DOWN , XK_Down},
-        {XBMCK_LEFT , XK_Left},
-        {XBMCK_RIGHT, XK_Right},
-        {XBMCK_HOME , XK_Home},
-        {XBMCK_END  , XK_End},
-        {0          , 0},
-    };
-
-    unsigned int vkey = action.GetID() & 0xFF;
-    for(SVirtualToSym* it = actions; it->vkey; ++it)
-    {
-      if(it->vkey == action.GetID())
-      {
-        SendKeyPress(it->sym);
-        return true;
-      }
-    }
-
-  }
+    SendKeyPress(CodeToKeysym(g_vkey_to_keysym  , action.GetID() & 0xFF));
   else
-  {
-    struct SActionToSym {
-      int          action;
-      KeySym       sym;
-    } actions[] = {
-        {ACTION_MOVE_UP   , XK_Up},
-        {ACTION_MOVE_DOWN , XK_Down},
-        {ACTION_MOVE_LEFT , XK_Left},
-        {ACTION_MOVE_RIGHT, XK_Right},
-        {ACTION_PAGE_UP   , XK_Page_Up},
-        {ACTION_PAGE_DOWN , XK_Page_Down},
-        {ACTION_NONE      , 0},
-    };
+    SendKeyPress(CodeToKeysym(g_action_to_keysym, action.GetID()));
 
-    for(SActionToSym* it = actions; it->action != ACTION_NONE; ++it)
-    {
-      if(it->action == action.GetID())
-      {
-        SendKeyPress(it->sym);
-        return true;
-      }
-    }
-
-  }
   return CGUIControl::OnAction(action);
 }
 
