@@ -727,6 +727,7 @@ EVENT_RESULT CGUIExternalAppControl::OnMouseEvent(const CPoint &point, const CMo
     }
     else
       OnMouseOver(point);
+    return EVENT_RESULT_HANDLED;
   }
   return EVENT_RESULT_UNHANDLED;
 }
