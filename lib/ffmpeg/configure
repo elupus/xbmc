@@ -1258,6 +1258,7 @@ CMDLINE_SELECT="
     stripping
     symver
     yasm
+    openmp
 "
 
 PATHS_LIST='
@@ -1819,6 +1820,7 @@ enable stripping
 enable swresample
 enable swscale
 enable swscale_alpha
+enable openmp
 
 # build settings
 SHFLAGS='-shared -Wl,-soname,$$(@F)'
@@ -3343,6 +3345,11 @@ enabled asm || { arch=c; disable $ARCH_LIST $ARCH_EXT_LIST; }
 if test $target_os = "haiku"; then
     disable memalign
     disable posix_memalign
+fi
+
+if enabled openmp; then
+    add_cflags -fopenmp
+    add_ldflags -fopenmp
 fi
 
 ! enabled_any memalign posix_memalign malloc_aligned &&
