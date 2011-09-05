@@ -151,6 +151,7 @@ static void filter(AVFilterContext *ctx, AVFilterBufferRef *dstpic,
             h >>= yadif->csp->log2_chroma_h;
         }
 
+        #pragma omp parallel for private(y)
         for (y = 0; y < h; y++) {
             if ((y ^ parity) & 1) {
                 uint8_t *prev = &yadif->prev->data[i][y*refs];
