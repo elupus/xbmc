@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavcore/imgutils.h"
+#include "libavutil/imgutils.h"
 #include "avcodec.h"
 #include "pnm.h"
 
@@ -107,6 +107,7 @@ int ff_pnm_decode_header(AVCodecContext *avctx, PNMContext * const s)
 
         avctx->width  = w;
         avctx->height = h;
+        s->maxval     = maxval;
         if (depth == 1) {
             if (maxval == 1)
                 avctx->pix_fmt = PIX_FMT_MONOWHITE;
@@ -135,7 +136,7 @@ int ff_pnm_decode_header(AVCodecContext *avctx, PNMContext * const s)
         return -1;
     pnm_get(s, buf1, sizeof(buf1));
     avctx->height = atoi(buf1);
-    if(av_image_check_size(avctx->width, avctx->height, 0, avctx))
+    if(avctx->height <= 0 || av_image_check_size(avctx->width, avctx->height, 0, avctx))
         return -1;
     if (avctx->pix_fmt != PIX_FMT_MONOWHITE) {
         pnm_get(s, buf1, sizeof(buf1));
