@@ -141,7 +141,7 @@ public:
   }
   virtual void url_set_interrupt_cb(URLInterruptCB *interrupt_cb) { ::url_set_interrupt_cb(interrupt_cb); }
   virtual int avformat_open_input(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options)
-  { return ::avformat_open_input(ps, filename, fmt, opt, ap); }
+  { return ::avformat_open_input(ps, filename, fmt, options); }
   virtual int init_put_byte(AVIOContext *s, unsigned char *buffer, int buffer_size, int write_flag, void *opaque,
                             int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
                             int (*write_packet)(void *opaque, uint8_t *buf, int buf_size),
@@ -164,7 +164,7 @@ public:
   virtual void put_be32(AVIOContext *s, unsigned int val) { ::put_be32(s, val); }
   virtual void put_be16(AVIOContext *s, unsigned int val) { ::put_be16(s, val); }
   virtual AVFormatContext *avformat_alloc_context() { return ::avformat_alloc_context(); }
-  virtual AVStream *avformat_new_stream(AVFormatContext *s, AVCodec *c) { return ::av_new_stream(s, c); }
+  virtual AVStream *avformat_new_stream(AVFormatContext *s, AVCodec *c) { return ::avformat_new_stream(s, c); }
   virtual AVOutputFormat *av_guess_format(const char *short_name, const char *filename, const char *mime_type) { return ::av_guess_format(short_name, filename, mime_type); }
   virtual int av_set_parameters(AVFormatContext *s, AVFormatParameters *ap) { return ::av_set_parameters(s, ap); }
   virtual AVIOContext *av_alloc_put_byte(unsigned char *buffer, int buffer_size, int write_flag, void *opaque,
