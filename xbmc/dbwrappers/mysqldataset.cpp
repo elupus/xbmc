@@ -23,9 +23,11 @@
 #include <string>
 #include <set>
 
+#include "system.h" // for GetLastError()
+#ifdef BUILD_MYSQL
+
 #include "mysqldataset.h"
 #include "utils/log.h"
-#include "system.h" // for GetLastError()
 #include "mysql/errmsg.h"
 #ifdef _WIN32
 #pragma comment(lib, "mysqlclient.lib")
@@ -1562,3 +1564,4 @@ void MysqlDataset::interrupt() {
 
 }//namespace
 
+#endif /* BUILD_MYSQL */
