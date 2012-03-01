@@ -196,10 +196,10 @@ class DllAvFormat : public DllDynamic, DllAvFormatInterface
   DEFINE_FUNC_ALIGNED2(void, __cdecl, avio_wb24, AVIOContext*, unsigned int)
   DEFINE_FUNC_ALIGNED2(void, __cdecl, avio_wb32, AVIOContext*, unsigned int)
   DEFINE_FUNC_ALIGNED2(void, __cdecl, avio_wb16, AVIOContext*, unsigned int)
-  DEFINE_METHOD7(AVIOContext *, avio_alloc_context, (unsigned char *p2, int p3, int p4, void *p5,
+  DEFINE_METHOD7(AVIOContext *, avio_alloc_context, (unsigned char *p1, int p2, int p3, void *p4,
+                  int (*p5)(void *opaque, uint8_t *buf, int buf_size),
                   int (*p6)(void *opaque, uint8_t *buf, int buf_size),
-                  int (*p7)(void *opaque, uint8_t *buf, int buf_size),
-                  offset_t (*p8)(void *opaque, offset_t offset, int whence)))
+                  offset_t (*p7)(void *opaque, offset_t offset, int whence)))
   DEFINE_METHOD4(void, av_dump_format, (AVFormatContext *p1, int p2, const char *p3, int p4))
   DEFINE_METHOD3(int, avio_open, (AVIOContext **p1, const char *p2, int p3))
   DEFINE_METHOD1(int, avio_close, (AVIOContext *p1))
@@ -235,7 +235,7 @@ class DllAvFormat : public DllDynamic, DllAvFormatInterface
     RESOLVE_METHOD(avio_close)
     RESOLVE_METHOD(avio_open_dyn_buf)
     RESOLVE_METHOD(avio_close_dyn_buf)
-    RESOLVE_METHOD(avio_fseek)
+    RESOLVE_METHOD(avio_seek)
     RESOLVE_METHOD(avio_read)
     RESOLVE_METHOD(avio_w8)
     RESOLVE_METHOD(avio_write)
