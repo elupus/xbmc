@@ -78,7 +78,7 @@ bool CEncoderFFmpeg::Init(const char* strFile, int iInChannels, int iInRate, int
   }
 
   m_Format     = m_dllAvFormat.avformat_alloc_context();
-  m_Format->pb = m_dllAvFormat.av_alloc_put_byte(m_BCBuffer, sizeof(m_BCBuffer), URL_RDONLY, this,  NULL, MuxerReadPacket, NULL);
+  m_Format->pb = m_dllAvFormat.avio_alloc_context(m_BCBuffer, sizeof(m_BCBuffer), AVIO_FLAG_READ, this,  NULL, MuxerReadPacket, NULL);
   if (!m_Format->pb)
   {
     m_dllAvUtil.av_freep(&m_Format);
@@ -88,15 +88,6 @@ bool CEncoderFFmpeg::Init(const char* strFile, int iInChannels, int iInRate, int
 
   m_Format->oformat  = fmt;
   m_Format->bit_rate = g_guiSettings.GetInt("audiocds.bitrate") * 1000;
-
-  /* setup the muxer */
-  if (m_dllAvFormat.av_set_parameters(m_Format, NULL) != 0)
-  {
-    m_dllAvUtil.av_freep(&m_Format->pb);
-    m_dllAvUtil.av_freep(&m_Format);
-    CLog::Log(LOGERROR, "CEncoderFFmpeg::Init - Failed to set the muxer parameters");
-    return false;
-  }
 
   /* add a stream to it */
   m_Stream = m_dllAvFormat.avformat_new_stream(m_Format, codec);
@@ -175,7 +166,7 @@ bool CEncoderFFmpeg::Init(const char* strFile, int iInChannels, int iInRate, int
   SetTag("encoder"     , "XBMC FFmpeg Encoder");
 
   /* write the header */
-  if (m_dllAvFormat.av_write_header(m_Format) != 0)
+  if (m_dllAvFormat.avformat_write_header(m_Format, NULL) != 0)
   {
     CLog::Log(LOGERROR, "CEncoderFFmpeg::Init - Failed to write the header");
     delete[] m_Buffer;
@@ -190,7 +181,7 @@ bool CEncoderFFmpeg::Init(const char* strFile, int iInChannels, int iInRate, int
 
 void CEncoderFFmpeg::SetTag(const CStdString tag, const CStdString value)
 {
-  m_dllAvFormat.av_metadata_set2(&m_Format->metadata, tag.c_str(), value.c_str(), 0);
+  m_dllAvFormat.av_dict_set(&m_Format->metadata, tag.c_str(), value.c_str(), 0);
 }
 
 int CEncoderFFmpeg::MuxerReadPacket(void *opaque, uint8_t *buf, int buf_size)

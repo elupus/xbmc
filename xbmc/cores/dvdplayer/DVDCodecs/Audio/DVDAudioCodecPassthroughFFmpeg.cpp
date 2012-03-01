@@ -99,7 +99,7 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
   muxer.m_pFormat->oformat = fOut;
 
   /* allocate a put_byte struct so we can grab the output */
-  muxer.m_pFormat->pb = m_dllAvFormat.av_alloc_put_byte(muxer.m_BCBuffer, sizeof(muxer.m_BCBuffer), URL_RDONLY, &muxer,  NULL, MuxerReadPacket, NULL);
+  muxer.m_pFormat->pb = m_dllAvFormat.avio_alloc_context(muxer.m_BCBuffer, sizeof(muxer.m_BCBuffer), AVIO_FLAG_READ, &muxer,  NULL, MuxerReadPacket, NULL);
   if (!muxer.m_pFormat->pb)
   {
     CLog::Log(LOGERROR, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - Failed to allocate ByteIOContext");
@@ -108,18 +108,9 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
   }
 
   /* this is streamed, no file, and ignore the index */
-  muxer.m_pFormat->pb->is_streamed   = 1;
+  muxer.m_pFormat->pb->seekable      = 0;
   muxer.m_pFormat->flags            |= AVFMT_NOFILE | AVFMT_FLAG_IGNIDX;
   muxer.m_pFormat->bit_rate          = hints.bitrate;
-
-  /* setup the muxer */
-  if (m_dllAvFormat.av_set_parameters(muxer.m_pFormat, NULL) != 0)
-  {
-    CLog::Log(LOGERROR, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - Failed to set the %s muxer parameters", muxerName.c_str());
-    Dispose();
-    return false;
-  }
-
 
   /* While this is strictly only needed on big-endian systems, we do it on
    * both to avoid as much dead code as possible.
@@ -132,7 +123,7 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
 #endif
 
   /* request output of wanted endianness */
-  if (!fOut->priv_class || m_dllAvUtil.av_set_string3(muxer.m_pFormat->priv_data, "spdif_flags", spdifFlags, 0, NULL) != 0)
+  if (!fOut->priv_class || m_dllAvUtil.av_opt_set(muxer.m_pFormat->priv_data, "spdif_flags", spdifFlags, 0) != 0)
   {
 #if defined(WORDS_BIGENDIAN) && !defined(__APPLE__)
     CLog::Log(LOGERROR, "CDVDAudioCodecPassthroughFFmpeg::SetupMuxer - Unable to set big-endian stream mode (FFmpeg too old?), disabling passthrough");
@@ -152,8 +143,6 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
 
 
   /* set the stream's parameters */
-  muxer.m_pStream->stream_copy           = 1;
-
   m_SampleRate = hints.samplerate;
   if(!m_SampleRate && hints.codec == CODEC_ID_AC3)
     m_SampleRate = 48000;
@@ -169,7 +158,7 @@ bool CDVDAudioCodecPassthroughFFmpeg::SetupMuxer(CDVDStreamInfo &hints, CStdStri
   codec->extradata_size = hints.extrasize;
   memcpy(codec->extradata, hints.extradata, hints.extrasize);
 
-  muxer.m_WroteHeader = m_dllAvFormat.av_write_header(muxer.m_pFormat) == 0;
+  muxer.m_WroteHeader = m_dllAvFormat.avformat_write_header(muxer.m_pFormat, NULL) == 0;
   if (!muxer.m_WroteHeader)
   {
     CLog::Log(LOGERROR, "CDVDAudioCodecPassthrough::SetupMuxer - Failed to write the frame header");

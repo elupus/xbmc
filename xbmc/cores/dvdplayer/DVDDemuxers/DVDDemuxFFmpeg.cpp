@@ -160,7 +160,7 @@ static TLS g_tls;
 #define g_demuxer (*((CDVDDemuxFFmpeg**)g_tls.Get()))
 #endif
 
-static int interrupt_cb(void)
+static int interrupt_cb(void* unused)
 {
   if(g_demuxer && g_demuxer->Aborted())
     return 1;
@@ -178,7 +178,7 @@ static int dvd_file_open(URLContext *h, const char *filename, int flags)
 
 static int dvd_file_read(void *h, uint8_t* buf, int size)
 {
-  if(interrupt_cb())
+  if(interrupt_cb(NULL))
     return -1;
 
   CDVDInputStream* pInputStream = (CDVDInputStream*)h;
@@ -192,7 +192,7 @@ static int dvd_file_write(URLContext *h, BYTE* buf, int size)
 */
 static offset_t dvd_file_seek(void *h, offset_t pos, int whence)
 {
-  if(interrupt_cb())
+  if(interrupt_cb(NULL))
     return -1;
 
   CDVDInputStream* pInputStream = (CDVDInputStream*)h;
@@ -236,6 +236,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
   m_speed = DVD_PLAYSPEED_NORMAL;
   g_demuxer = this;
   m_program = UINT_MAX;
+  const AVIOInterruptCB int_cb = { interrupt_cb, NULL };
 
   if (!pInput) return false;
 
@@ -246,10 +247,6 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
 
   // register codecs
   m_dllAvFormat.av_register_all();
-  m_dllAvFormat.url_set_interrupt_cb(interrupt_cb);
-
-  // could be used for interupting ffmpeg while opening a file (eg internet streams)
-  // url_set_interrupt_cb(NULL);
 
   m_pInput = pInput;
   strFile = m_pInput->GetFileName();
@@ -301,7 +298,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
   else
   {
     unsigned char* buffer = (unsigned char*)m_dllAvUtil.av_malloc(FFMPEG_FILE_BUFFER_SIZE);
-    m_ioContext = m_dllAvFormat.av_alloc_put_byte(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_pInput, dvd_file_read, NULL, dvd_file_seek);
+    m_ioContext = m_dllAvFormat.avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_pInput, dvd_file_read, NULL, dvd_file_seek);
     m_ioContext->max_packet_size = m_pInput->GetBlockSize();
     if(m_ioContext->max_packet_size)
       m_ioContext->max_packet_size *= FFMPEG_FILE_BUFFER_SIZE / m_ioContext->max_packet_size;
@@ -333,7 +330,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
         pd.filename = strFile.c_str();
 
         // read data using avformat's buffers
-        pd.buf_size = m_dllAvFormat.get_buffer(m_ioContext, pd.buf, m_ioContext->max_packet_size ? m_ioContext->max_packet_size : m_ioContext->buffer_size);
+        pd.buf_size = m_dllAvFormat.avio_read(m_ioContext, pd.buf, m_ioContext->max_packet_size ? m_ioContext->max_packet_size : m_ioContext->buffer_size);
         if (pd.buf_size <= 0)
         {
           CLog::Log(LOGERROR, "%s - error reading from input stream, %s", __FUNCTION__, strFile.c_str());
@@ -342,7 +339,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
         memset(pd.buf+pd.buf_size, 0, AVPROBE_PADDING_SIZE);
 
         // restore position again
-        m_dllAvFormat.url_fseek(m_ioContext , 0, SEEK_SET);
+        m_dllAvFormat.avio_seek(m_ioContext , 0, SEEK_SET);
 
         // the advancedsetting is for allowing the user to force outputting the
         // 44.1 kHz DTS wav file as PCM, so that an A/V receiver can decode
@@ -424,6 +421,9 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
     }
   }
 
+  // set the interrupt callback, appeared in libavformat 53.15.0
+  m_pFormatContext->interrupt_callback = int_cb;
+
   // analyse very short to speed up mjpeg playback start
   if (iformat && (strcmp(iformat->name, "mjpeg") == 0) && m_ioContext->seekable == 0)
     m_pFormatContext->max_analyze_duration = 500000;
@@ -463,7 +463,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
   m_pFormatContext->flags |= AVFMT_FLAG_NONBLOCK;
 
   // print some extra information
-  m_dllAvFormat.dump_format(m_pFormatContext, 0, strFile.c_str(), 0);
+  m_dllAvFormat.av_dump_format(m_pFormatContext, 0, strFile.c_str(), 0);
 
   UpdateCurrentPTS();
 
@@ -502,20 +502,12 @@ void CDVDDemuxFFmpeg::Dispose()
 
   if (m_pFormatContext)
   {
-    if (m_ioContext)
+    if (m_ioContext && m_pFormatContext->pb && m_pFormatContext->pb != m_ioContext)
     {
-      if(m_pFormatContext->pb && m_pFormatContext->pb != m_ioContext)
-      {
-        CLog::Log(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
-        m_ioContext = m_pFormatContext->pb;
-      }
-      m_dllAvFormat.av_close_input_stream(m_pFormatContext);
-      if (m_ioContext->buffer)
-        m_dllAvUtil.av_free(m_ioContext->buffer);
-      m_dllAvUtil.av_free(m_ioContext);
+      CLog::Log(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
+      m_ioContext = m_pFormatContext->pb;
     }
-    else
-      m_dllAvFormat.av_close_input_file(m_pFormatContext);
+    m_dllAvFormat.avformat_close_input(&m_pFormatContext);
   }
   m_ioContext = NULL;
   m_pFormatContext = NULL;
@@ -957,8 +949,8 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
         st->iBitRate = pStream->codec->bit_rate;
         st->iBitsPerSample = pStream->codec->bits_per_coded_sample;
 	
-        if(m_dllAvFormat.av_metadata_get(pStream->metadata, "title", NULL, 0))
-          st->m_description = m_dllAvFormat.av_metadata_get(pStream->metadata, "title", NULL, 0)->value;
+        if(m_dllAvFormat.av_dict_get(pStream->metadata, "title", NULL, 0))
+          st->m_description = m_dllAvFormat.av_dict_get(pStream->metadata, "title", NULL, 0)->value;
 
         break;
       }
@@ -1047,8 +1039,8 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
           if(pStream->codec)
             st->identifier = pStream->codec->sub_id;
 	    
-          if(m_dllAvFormat.av_metadata_get(pStream->metadata, "title", NULL, 0))
-            st->m_description = m_dllAvFormat.av_metadata_get(pStream->metadata, "title", NULL, 0)->value;
+          if(m_dllAvFormat.av_dict_get(pStream->metadata, "title", NULL, 0))
+            st->m_description = m_dllAvFormat.av_dict_get(pStream->metadata, "title", NULL, 0)->value;
 	
           break;
         }
@@ -1059,7 +1051,7 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
         {
           std::string fileName = "special://temp/fonts/";
           XFILE::CDirectory::Create(fileName);
-          AVDictionaryEntry *nameTag = m_dllAvFormat.av_metadata_get(pStream->metadata, "filename", NULL, 0);
+          AVDictionaryEntry *nameTag = m_dllAvFormat.av_dict_get(pStream->metadata, "filename", NULL, 0);
           if (!nameTag) {
             CLog::Log(LOGERROR, "%s: TTF attachment has no name", __FUNCTION__);
             break;
@@ -1108,7 +1100,7 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
     // API added on: 2010-10-15
     // (Note that while the function was available earlier, the generic
     // metadata tags were not populated by default)
-    AVDictionaryEntry *langTag = m_dllAvFormat.av_metadata_get(pStream->metadata, "language", NULL, 0);
+    AVDictionaryEntry *langTag = m_dllAvFormat.av_dict_get(pStream->metadata, "language", NULL, 0);
     if (langTag)
       strncpy(m_streams[iId]->language, langTag->value, 3);
 #else
@@ -1218,7 +1210,7 @@ void CDVDDemuxFFmpeg::GetChapterName(std::string& strChapterName)
       // API added on: 2010-10-15
       // (Note that while the function was available earlier, the generic
       // metadata tags were not populated by default)
-      AVDictionaryEntry *titleTag = m_dllAvFormat.av_metadata_get(m_pFormatContext->chapters[chapterIdx-1]->metadata,
+      AVDictionaryEntry *titleTag = m_dllAvFormat.av_dict_get(m_pFormatContext->chapters[chapterIdx-1]->metadata,
                                                               "title", NULL, 0);
       if (titleTag)
         strChapterName = titleTag->value;

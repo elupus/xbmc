@@ -90,7 +90,7 @@ public:
   virtual int64_t av_rescale_q(int64_t a, AVRational bq, AVRational cq)=0;
   virtual const AVCRC* av_crc_get_table(AVCRCId crc_id)=0;
   virtual uint32_t av_crc(const AVCRC *ctx, uint32_t crc, const uint8_t *buffer, size_t length)=0;
-  virtual int av_set_string3(void *obj, const char *name, const char *val, int alloc, const AVOption **o_out)=0;
+  virtual int av_opt_set(void *obj, const char *name, const char *val, int search_flags)=0;
   virtual AVFifoBuffer *av_fifo_alloc(unsigned int size) = 0;
   virtual void av_fifo_free(AVFifoBuffer *f) = 0;
   virtual void av_fifo_reset(AVFifoBuffer *f) = 0;
@@ -98,7 +98,7 @@ public:
   virtual int av_fifo_generic_read(AVFifoBuffer *f, void *dest, int buf_size, void (*func)(void*, void*, int)) = 0;
   virtual int av_fifo_generic_write(AVFifoBuffer *f, void *src, int size, int (*func)(void*, void*, int)) = 0;
   virtual char *av_strdup(const char *s)=0;
-  virtual int av_get_bits_per_sample_fmt(enum AVSampleFormat p1) = 0;
+  virtual int av_get_bytes_per_sample(enum AVSampleFormat p1) = 0;
 };
 
 #if (defined USE_EXTERNAL_FFMPEG)
@@ -119,12 +119,7 @@ public:
    virtual int64_t av_rescale_q(int64_t a, AVRational bq, AVRational cq) { return ::av_rescale_q(a, bq, cq); }
    virtual const AVCRC* av_crc_get_table(AVCRCId crc_id) { return ::av_crc_get_table(crc_id); }
    virtual uint32_t av_crc(const AVCRC *ctx, uint32_t crc, const uint8_t *buffer, size_t length) { return ::av_crc(ctx, crc, buffer, length); }
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(52,7,0)
-   // API added on: 2008-12-16
-   virtual int av_set_string3(void *obj, const char *name, const char *val, int alloc, const AVOption **o_out) { return ::av_set_string3(obj, name, val, alloc, o_out); }
-#else
-   virtual int av_set_string3(void *obj, const char *name, const char *val, int alloc, const AVOption **o_out) { return AVERROR(ENOENT); }
-#endif
+   virtual int av_opt_set(void *obj, const char *name, const char *val, int search_flags) { return ::av_opt_set(obj, name, val, search_flags); }
   virtual AVFifoBuffer *av_fifo_alloc(unsigned int size) {return ::av_fifo_alloc(size); }
   virtual void av_fifo_free(AVFifoBuffer *f) { ::av_fifo_free(f); }
   virtual void av_fifo_reset(AVFifoBuffer *f) { ::av_fifo_reset(f); }
@@ -134,8 +129,8 @@ public:
   virtual int av_fifo_generic_write(AVFifoBuffer *f, void *src, int size, int (*func)(void*, void*, int))
     { return ::av_fifo_generic_write(f, src, size, func); }
   virtual char *av_strdup(const char *s) { return ::av_strdup(s); }
-  virtual int av_get_bits_per_sample_fmt(enum AVSampleFormat p1)
-    { return ::av_get_bits_per_sample_fmt(p1); }
+  virtual int av_get_bytes_per_sample(enum AVSampleFormat p1)
+    { return ::av_get_bytes_per_sample(p1); }
 
    // DLL faking.
    virtual bool ResolveExports() { return true; }
@@ -164,7 +159,7 @@ class DllAvUtilBase : public DllDynamic, DllAvUtilInterface
   DEFINE_METHOD3(int64_t, av_rescale_q, (int64_t p1, AVRational p2, AVRational p3));
   DEFINE_METHOD1(const AVCRC*, av_crc_get_table, (AVCRCId p1))
   DEFINE_METHOD4(uint32_t, av_crc, (const AVCRC *p1, uint32_t p2, const uint8_t *p3, size_t p4));
-  DEFINE_METHOD5(int, av_set_string3, (void *p1, const char *p2, const char *p3, int p4, const AVOption **p5));
+  DEFINE_METHOD4(int, av_opt_set, (void *p1, const char *p2, const char *p3, int p4));
   DEFINE_METHOD1(AVFifoBuffer*, av_fifo_alloc, (unsigned int p1))
   DEFINE_METHOD1(void, av_fifo_free, (AVFifoBuffer *p1))
   DEFINE_METHOD1(void, av_fifo_reset, (AVFifoBuffer *p1))
@@ -172,7 +167,7 @@ class DllAvUtilBase : public DllDynamic, DllAvUtilInterface
   DEFINE_METHOD4(int, av_fifo_generic_read, (AVFifoBuffer *p1, void *p2, int p3, void (*p4)(void*, void*, int)))
   DEFINE_METHOD4(int, av_fifo_generic_write, (AVFifoBuffer *p1, void *p2, int p3, int (*p4)(void*, void*, int)))
   DEFINE_METHOD1(char*, av_strdup, (const char *p1))
-  DEFINE_METHOD1(int, av_get_bits_per_sample_fmt, (enum AVSampleFormat p1))
+  DEFINE_METHOD1(int, av_get_bytes_per_sample, (enum AVSampleFormat p1))
 
   public:
   BEGIN_METHOD_RESOLVE()
@@ -186,7 +181,7 @@ class DllAvUtilBase : public DllDynamic, DllAvUtilInterface
     RESOLVE_METHOD(av_rescale_q)
     RESOLVE_METHOD(av_crc_get_table)
     RESOLVE_METHOD(av_crc)
-    RESOLVE_METHOD(av_set_string3)
+    RESOLVE_METHOD(av_opt_set)
     RESOLVE_METHOD(av_fifo_alloc)
     RESOLVE_METHOD(av_fifo_free)
     RESOLVE_METHOD(av_fifo_reset)
@@ -194,7 +189,7 @@ class DllAvUtilBase : public DllDynamic, DllAvUtilInterface
     RESOLVE_METHOD(av_fifo_generic_read)
     RESOLVE_METHOD(av_fifo_generic_write)
     RESOLVE_METHOD(av_strdup)
-    RESOLVE_METHOD(av_get_bits_per_sample_fmt)
+    RESOLVE_METHOD(av_get_bytes_per_sample)
   END_METHOD_RESOLVE()
 };
 
