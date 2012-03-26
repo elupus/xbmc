@@ -70,7 +70,7 @@ public:
   virtual int av_read_play(AVFormatContext *s)=0;
   virtual int av_read_pause(AVFormatContext *s)=0;
   virtual int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int flags)=0;
-#if (!defined USE_EXTERNAL_FFMPEG)
+#if (!defined USE_EXTERNAL_FFMPEG) && (!defined TARGET_DARWIN)
   virtual int avformat_find_stream_info_dont_call(AVFormatContext *ic, AVDictionary **options)=0;
 #endif
   virtual int avformat_open_input(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options)=0;
@@ -102,7 +102,7 @@ public:
   virtual int av_dict_set(AVDictionary **pm, const char *key, const char *value, int flags)=0;
 };
 
-#if (defined USE_EXTERNAL_FFMPEG)
+#if (defined USE_EXTERNAL_FFMPEG) || (defined TARGET_DARWIN) 
 
 // Use direct mapping
 class DllAvFormat : public DllDynamic, DllAvFormatInterface
