@@ -74,12 +74,12 @@ void CGUIWindowSettingsBluetooth::OnItemSelected(int iItem)
   if (item == NULL)
     return;
 
-  const char *id = item->GetProperty("id").asString().c_str();
+  std::string id = item->GetProperty("id").asString();
   int choice = 0;
   boost::shared_ptr<IBluetoothDevice> device;
-  if (id != NULL && id[0] != 0)
+  if (id.length() > 0)
   {
-    device = g_bluetoothManager.GetDevice(id);
+    device = g_bluetoothManager.GetDevice(id.c_str());
     if (device != NULL)
     {
       // popup the context menu
@@ -106,15 +106,15 @@ void CGUIWindowSettingsBluetooth::OnItemSelected(int iItem)
     break;
 
   case 2:
-    g_bluetoothManager.ConnectDevice(id);
+    g_bluetoothManager.ConnectDevice(id.c_str());
     break;
 
   case 3:
-    g_bluetoothManager.DisconnectDevice(id);
+    g_bluetoothManager.DisconnectDevice(id.c_str());
     break;
 
   case 4:
-    g_bluetoothManager.RemoveDevice(id);
+    g_bluetoothManager.RemoveDevice(id.c_str());
     break;
   }
 }
