@@ -130,3 +130,6 @@
 
 // Sent to the AddonSetting dialogs from addons if they updated a setting
 #define GUI_MSG_SETTING_UPDATED       GUI_MSG_USER + 35
+
+// Message sent to tell the GUI to remove a single item
+#define GUI_MSG_REMOVE_ITEM           GUI_MSG_USER + 36

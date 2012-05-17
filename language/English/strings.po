@@ -6173,7 +6173,49 @@ msgstr ""
 msgid "Post-processing"
 msgstr ""
 
-#empty strings from id 16401 to 17499
+#empty strings from id 16401 to 16499
+
+#: id:16500
+msgid "Bluetooth"
+msgstr ""
+
+#: id:16501
+msgid "Bluetooth audio"
+msgstr ""
+
+#: id:16502
+msgid "Settings - Bluetooth"
+msgstr ""
+
+#: id:16503
+msgid "Connect"
+msgstr ""
+
+#: id:16504
+msgid "Disconnect"
+msgstr ""
+
+#: id:16505
+msgid "Do you want to pair with this device?"
+msgstr ""
+
+#: id:16506
+msgid "Please enter the PIN"
+msgstr ""
+
+#: id:16507
+msgid "Please enter the PIN on the remote device"
+msgstr ""
+
+#: id:16508
+msgid "and press Enter key"
+msgstr ""
+
+#: id:16509
+msgid "Disconnected"
+msgstr ""
+
+#empty strings from id 16510 to 17499
 
 #: id:17500
 msgid "Display sleep timeout"

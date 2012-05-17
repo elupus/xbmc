@@ -509,7 +509,17 @@ msgid "Album Details"
 msgstr ""
 
 #Video and Music OSD Labels
-#empty strings from id 31332 to 31350
+#empty strings from id 31332 to 31340
+
+#: id:31341
+msgid "Selected Device"
+msgstr ""
+
+#: id:31342
+msgid "Hardware Address"
+msgstr ""
+
+#empty strings from id 31343 to 31350
 
 #: id:31351
 msgid "Pause"
