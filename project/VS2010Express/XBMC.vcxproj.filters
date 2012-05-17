@@ -217,6 +217,9 @@
     <Filter Include="network\httprequesthandler">
       <UniqueIdentifier>{9029e610-aa5a-4414-9e96-1d69f03b3bd8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="bluetooth">
+      <UniqueIdentifier>{a611429c-0728-4156-87bd-6f2dae015407}</UniqueIdentifier>
+    </Filter>    
     <Filter Include="cores\AudioEngine">
       <UniqueIdentifier>{19314641-c5c4-49ff-ae42-6ebcc1a6a038}</UniqueIdentifier>
     </Filter>
@@ -2583,6 +2586,12 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\network\httprequesthandler\HTTPImageHandler.cpp">
       <Filter>network\httprequesthandler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\settings\GUIWindowSettingsBluetooth.cpp">
+      <Filter>settings</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\bluetooth\BluetoothManager.cpp">
+      <Filter>bluetooth</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -5007,6 +5016,7 @@
     <ClInclude Include="..\..\xbmc\network\windows\ZeroconfBrowserWIN.h">
       <Filter>network\windows</Filter>
     </ClInclude>
+<<<<<<< HEAD
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\Encoders\AEEncoderFFmpeg.h">
       <Filter>cores\AudioEngine\Encoders</Filter>
     </ClInclude>
@@ -5204,6 +5214,16 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\network\httprequesthandler\HTTPImageHandler.h">
       <Filter>network\httprequesthandler</Filter>
+=======
+    <ClInclude Include="..\..\xbmc\settings\GUIWindowSettingsBluetooth.h">
+      <Filter>settings</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\bluetooth\BluetoothManager.h">
+      <Filter>bluetooth</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\bluetooth\IBluetoothSyscall.h">
+      <Filter>bluetooth</Filter>
+>>>>>>> [bluetooth] add files to windows build
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

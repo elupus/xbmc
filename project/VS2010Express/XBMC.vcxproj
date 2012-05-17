@@ -297,6 +297,7 @@
     <ClCompile Include="..\..\xbmc\Autorun.cpp" />
     <ClCompile Include="..\..\xbmc\AutoSwitch.cpp" />
     <ClCompile Include="..\..\xbmc\BackgroundInfoLoader.cpp" />
+    <ClCompile Include="..\..\xbmc\bluetooth\BluetoothManager.cpp" />
     <ClCompile Include="..\..\xbmc\cores\AudioEngine\AEFactory.cpp" />
     <ClCompile Include="..\..\xbmc\cores\AudioEngine\AESinkFactory.cpp" />
     <ClCompile Include="..\..\xbmc\cores\AudioEngine\Encoders\AEEncoderFFmpeg.cpp" />
@@ -877,6 +878,7 @@
     <ClCompile Include="..\..\xbmc\settings\GUIDialogSettings.cpp" />
     <ClCompile Include="..\..\xbmc\settings\GUISettings.cpp" />
     <ClCompile Include="..\..\xbmc\settings\GUIWindowSettings.cpp" />
+    <ClCompile Include="..\..\xbmc\settings\GUIWindowSettingsBluetooth.cpp" />
     <ClCompile Include="..\..\xbmc\settings\GUIWindowSettingsCategory.cpp" />
     <ClCompile Include="..\..\xbmc\settings\GUIWindowSettingsProfile.cpp" />
     <ClCompile Include="..\..\xbmc\settings\GUIWindowSettingsScreenCalibration.cpp" />
@@ -896,6 +898,8 @@
     <ClCompile Include="..\..\xbmc\TextureCache.cpp" />
     <ClCompile Include="..\..\xbmc\TextureCacheJob.cpp" />
     <ClCompile Include="..\..\xbmc\TextureDatabase.cpp" />
+    <ClInclude Include="..\..\xbmc\bluetooth\BluetoothManager.h" />
+    <ClInclude Include="..\..\xbmc\bluetooth\IBluetoothSyscall.h" />
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\AEAudioFormat.h" />
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\AEFactory.h" />
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\AESinkFactory.h" />
@@ -1826,6 +1830,7 @@
     <ClInclude Include="..\..\xbmc\settings\GUIDialogSettings.h" />
     <ClInclude Include="..\..\xbmc\settings\GUISettings.h" />
     <ClInclude Include="..\..\xbmc\settings\GUIWindowSettings.h" />
+    <ClInclude Include="..\..\xbmc\settings\GUIWindowSettingsBluetooth.h" />
     <ClInclude Include="..\..\xbmc\settings\GUIWindowSettingsCategory.h" />
     <ClInclude Include="..\..\xbmc\settings\GUIWindowSettingsProfile.h" />
     <ClInclude Include="..\..\xbmc\settings\GUIWindowSettingsScreenCalibration.h" />
