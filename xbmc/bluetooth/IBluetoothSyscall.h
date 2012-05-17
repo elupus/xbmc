@@ -54,6 +54,8 @@ public:
   virtual bool IsCreated()           = 0;
   virtual bool IsPaired()            = 0;
   virtual DeviceType GetDeviceType() = 0;
+
+  static DeviceType  GetDeviceTypeFromClass(uint32_t cls);
 };
 
 class IBluetoothEventsCallback

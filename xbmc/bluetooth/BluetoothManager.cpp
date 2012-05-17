@@ -28,6 +28,76 @@
 #include "dialogs/GUIDialogKaiToast.h"
 #include "GUIUserMessages.h"
 
+IBluetoothDevice::DeviceType IBluetoothDevice::GetDeviceTypeFromClass(uint32_t cls)
+{
+  switch ((cls & 0x1f00) >> 8)
+  {
+  case 0x01:
+    return DEVICE_TYPE_COMPUTER;
+  case 0x02:
+    switch ((cls & 0xfc) >> 2)
+    {
+    case 0x01:
+    case 0x02:
+    case 0x03:
+    case 0x05:
+      return DEVICE_TYPE_PHONE;
+    case 0x04:
+      return DEVICE_TYPE_MODEM;
+    }
+    break;
+  case 0x03:
+    return DEVICE_TYPE_NETWORK;
+  case 0x04:
+    switch ((cls & 0xfc) >> 2)
+    {
+    case 0x01:
+    case 0x02:
+      return DEVICE_TYPE_HEADSET;
+    case 0x06:
+      return DEVICE_TYPE_HEADPHONES;
+    case 0x0b:
+    case 0x0c:
+    case 0x0d:
+      return DEVICE_TYPE_VIDEO;
+    default:
+      return DEVICE_TYPE_AUDIO;
+    }
+    break;
+  case 0x05:
+    switch ((cls & 0xc0) >> 6)
+    {
+    case 0x00:
+      switch ((cls & 0x1e) >> 2)
+      {
+      case 0x01:
+      case 0x02:
+        return DEVICE_TYPE_JOYPAD;
+      }
+      break;
+    case 0x01:
+      return DEVICE_TYPE_KEYBOARD;
+    case 0x02:
+      switch ((cls & 0x1e) >> 2)
+      {
+      case 0x05:
+        return DEVICE_TYPE_TABLET;
+      default:
+        return DEVICE_TYPE_MOUSE;
+      }
+    }
+    break;
+  case 0x06:
+    if (cls & 0x80)
+      return DEVICE_TYPE_PRINTER;
+    if (cls & 0x20)
+      return DEVICE_TYPE_CAMERA;
+    break;
+  }
+
+  return DEVICE_TYPE_UNKNOWN;
+}
+
 CBluetoothManager g_bluetoothManager;
 
 CBluetoothManager::CBluetoothManager()
