@@ -77,7 +77,7 @@ CDBusAgent<T>::CDBusAgent(DBusConnection *conn, const char *path)
     static const DBusObjectPathVTable vtable = { 0 };
     DBusError error;
     dbus_error_init(&error);
-    dbus_connection_register_object_path(m_connection, path, &vtable, &error);
+    dbus_connection_try_register_object_path(m_connection, path, &vtable, this, &error);
     if (dbus_error_is_set(&error))
       CLog::Log(LOGERROR, "DBus: Error %s - %s", error.name, error.message);
     dbus_error_free(&error);
