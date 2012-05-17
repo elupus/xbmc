@@ -298,6 +298,7 @@
     <ClCompile Include="..\..\xbmc\AutoSwitch.cpp" />
     <ClCompile Include="..\..\xbmc\BackgroundInfoLoader.cpp" />
     <ClCompile Include="..\..\xbmc\bluetooth\BluetoothManager.cpp" />
+    <ClCompile Include="..\..\xbmc\bluetooth\win32\Win32BluetoothSyscall.cpp" />
     <ClCompile Include="..\..\xbmc\cores\AudioEngine\AEFactory.cpp" />
     <ClCompile Include="..\..\xbmc\cores\AudioEngine\AESinkFactory.cpp" />
     <ClCompile Include="..\..\xbmc\cores\AudioEngine\Encoders\AEEncoderFFmpeg.cpp" />
@@ -900,6 +901,7 @@
     <ClCompile Include="..\..\xbmc\TextureDatabase.cpp" />
     <ClInclude Include="..\..\xbmc\bluetooth\BluetoothManager.h" />
     <ClInclude Include="..\..\xbmc\bluetooth\IBluetoothSyscall.h" />
+    <ClInclude Include="..\..\xbmc\bluetooth\win32\Win32BluetoothSyscall.h" />
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\AEAudioFormat.h" />
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\AEFactory.h" />
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\AESinkFactory.h" />

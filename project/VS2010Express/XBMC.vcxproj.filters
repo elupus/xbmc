@@ -241,6 +241,9 @@
     <Filter Include="dbwrappers">
       <UniqueIdentifier>{5c7ad2df-b46d-4a29-ae17-3406fe73edde}</UniqueIdentifier>
     </Filter>
+    <Filter Include="bluetooth\win32">
+      <UniqueIdentifier>{834781af-fe1a-409c-b48d-cb7286b57da8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\xbmc\win32\pch.cpp">
@@ -2592,6 +2595,9 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\bluetooth\BluetoothManager.cpp">
       <Filter>bluetooth</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\bluetooth\win32\Win32BluetoothSyscall.cpp">
+      <Filter>bluetooth\win32</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -5224,6 +5230,9 @@
     <ClInclude Include="..\..\xbmc\bluetooth\IBluetoothSyscall.h">
       <Filter>bluetooth</Filter>
 >>>>>>> [bluetooth] add files to windows build
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\bluetooth\win32\Win32BluetoothSyscall.h">
+      <Filter>bluetooth\win32</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

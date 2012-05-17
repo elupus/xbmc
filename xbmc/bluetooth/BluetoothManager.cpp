@@ -32,6 +32,10 @@
 #include "linux/BluezBluetoothSyscall.h"
 #endif
 
+#if defined(TARGET_WINDOWS)
+#include "win32/Win32BluetoothSyscall.h"
+#endif
+
 IBluetoothDevice::DeviceType IBluetoothDevice::GetDeviceTypeFromClass(uint32_t cls)
 {
   switch ((cls & 0x1f00) >> 8)
@@ -102,6 +106,7 @@ IBluetoothDevice::DeviceType IBluetoothDevice::GetDeviceTypeFromClass(uint32_t c
   return DEVICE_TYPE_UNKNOWN;
 }
 
+
 CBluetoothManager g_bluetoothManager;
 
 CBluetoothManager::CBluetoothManager()
@@ -118,6 +123,10 @@ void CBluetoothManager::Initialize()
 {
 #if defined(TARGET_LINUX) && defined(HAS_DBUS)
   m_instance = new CBluezBluetoothSyscall();
+#endif
+
+#if defined(TARGET_WINDOWS)
+  m_instance = new CWin32BluetoothSyscall();
 #endif
 
   if (m_instance == NULL)
