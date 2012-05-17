@@ -28,6 +28,10 @@
 #include "dialogs/GUIDialogKaiToast.h"
 #include "GUIUserMessages.h"
 
+#if defined(TARGET_LINUX) && defined(HAS_DBUS)
+#include "linux/BluezBluetoothSyscall.h"
+#endif
+
 IBluetoothDevice::DeviceType IBluetoothDevice::GetDeviceTypeFromClass(uint32_t cls)
 {
   switch ((cls & 0x1f00) >> 8)
@@ -112,6 +116,10 @@ CBluetoothManager::~CBluetoothManager()
 
 void CBluetoothManager::Initialize()
 {
+#if defined(TARGET_LINUX) && defined(HAS_DBUS)
+  m_instance = new CBluezBluetoothSyscall();
+#endif
+
   if (m_instance == NULL)
     m_instance = new CNullBluetoothSyscall();
 }
