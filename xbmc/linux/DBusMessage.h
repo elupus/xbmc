@@ -32,6 +32,8 @@ public:
   bool AppendObjectPath(const char *object);
   bool AppendArgument(const char *string);
   bool AppendArgument(const char **arrayString, unsigned int length);
+  bool AppendVariant(bool b);
+  bool AppendVariant(const char *string);
 
   DBusMessage *SendSystem();
   DBusMessage *SendSession();
@@ -47,6 +49,7 @@ private:
 
   void Close();
   void PrepareArgument();
+  bool AppendVariant(int type, const char *signature, const void *value);
 
   DBusMessage *m_message;
   DBusMessage *m_reply;

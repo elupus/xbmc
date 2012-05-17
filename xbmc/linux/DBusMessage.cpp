@@ -64,6 +64,26 @@ bool CDBusMessage::AppendArgument(const char **arrayString, unsigned int length)
   return success;
 }
 
+bool CDBusMessage::AppendVariant(bool b)
+{
+  return AppendVariant(DBUS_TYPE_BOOLEAN, "b", &b);
+}
+
+bool CDBusMessage::AppendVariant(const char *string)
+{
+  return AppendVariant(DBUS_TYPE_STRING, "s", &string);
+}
+
+bool CDBusMessage::AppendVariant(int type, const char *signature, const void *value)
+{
+  PrepareArgument();
+  DBusMessageIter sub;
+  bool success = dbus_message_iter_open_container(&m_args, DBUS_TYPE_VARIANT, signature, &sub);
+  success &= dbus_message_iter_append_basic(&sub, type, value);
+  success &= dbus_message_iter_close_container(&m_args, &sub);
+  return success;
+}
+
 DBusMessage *CDBusMessage::SendSystem()
 {
   return Send(DBUS_BUS_SYSTEM);

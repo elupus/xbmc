@@ -41,7 +41,7 @@ CVariant CDBusUtil::GetVariant(const char *destination, const char *object, cons
         if (!dbus_message_has_signature(reply, "v"))
           CLog::Log(LOGERROR, "DBus: wrong signature on Get - should be \"v\" but was %s", dbus_message_iter_get_signature(&iter));
         else
-          result = ParseVariant(&iter);
+          result = ParseType(&iter);
       }
     }
   }
@@ -66,31 +66,7 @@ CVariant CDBusUtil::GetAll(const char *destination, const char *object, const ch
         CLog::Log(LOGERROR, "DBus: wrong signature on GetAll - should be \"a{sv}\" but was %s", dbus_message_iter_get_signature(&iter));
       else
       {
-        do
-        {
-          DBusMessageIter sub;
-          dbus_message_iter_recurse(&iter, &sub);
-          do
-          {
-            DBusMessageIter dict;
-            dbus_message_iter_recurse(&sub, &dict);
-            do
-            {
-              const char * key = NULL;
-
-              dbus_message_iter_get_basic(&dict, &key);
-              dbus_message_iter_next(&dict);
-
-              CVariant value = ParseVariant(&dict);
-
-              if (!value.isNull())
-                properties[key] = value;
-
-            } while (dbus_message_iter_next(&dict));
-
-          } while (dbus_message_iter_next(&sub));
-
-        } while (dbus_message_iter_next(&iter));
+        properties = ParseDictionary(&iter);
       }
     }
   }
@@ -98,12 +74,48 @@ CVariant CDBusUtil::GetAll(const char *destination, const char *object, const ch
   return properties;
 }
 
-CVariant CDBusUtil::ParseVariant(DBusMessageIter *itr)
+CVariant CDBusUtil::Parse(DBusMessageIter *itr)
 {
-  DBusMessageIter variant;
-  dbus_message_iter_recurse(itr, &variant);
+  char *s = dbus_message_iter_get_signature(itr);
+  CVariant v;
+  if (strcmp(s, "a{sv}") == 0)
+    v = ParseDictionary(itr);
+  else
+    v = ParseType(itr);
+  dbus_free(s);
+  return v;
+}
 
-  return ParseType(&variant);
+CVariant CDBusUtil::ParseDictionary(DBusMessageIter *itr)
+{
+  CVariant properties;
+  do
+  {
+    DBusMessageIter sub;
+    dbus_message_iter_recurse(itr, &sub);
+    do
+    {
+      DBusMessageIter dict;
+      dbus_message_iter_recurse(&sub, &dict);
+      do
+      {
+        const char * key = NULL;
+
+        dbus_message_iter_get_basic(&dict, &key);
+        dbus_message_iter_next(&dict);
+
+        CVariant value = ParseType(&dict);
+
+        if (!value.isNull())
+          properties[key] = value;
+
+      } while (dbus_message_iter_next(&dict));
+
+    } while (dbus_message_iter_next(&sub));
+
+  } while (dbus_message_iter_next(itr));
+
+  return properties;
 }
 
 CVariant CDBusUtil::ParseType(DBusMessageIter *itr)
@@ -162,6 +174,12 @@ CVariant CDBusUtil::ParseType(DBusMessageIter *itr)
       if (!item.isNull())
         value.push_back(item);
     } while (dbus_message_iter_next(&array));
+    break;
+  case DBUS_TYPE_VARIANT:
+    DBusMessageIter variant;
+    dbus_message_iter_recurse(itr, &variant);
+
+    value = ParseType(&variant);
     break;
   }
 
