@@ -53,7 +53,7 @@ private:
 class CBluezBluetoothAgent : public CDBusAgent<CBluezBluetoothAgent>
 {
 public:
-  CBluezBluetoothAgent(DBusConnection *conn);
+  CBluezBluetoothAgent(DBusConnection *conn, const char* path);
 protected:
   void Release(std::vector<CVariant> &args);
   void RequestPinCode(std::vector<CVariant> &args);
@@ -84,7 +84,8 @@ private:
   std::string m_adapter;
   bool m_hasAdapter;
   DBusConnection *m_connection;
-  CBluezBluetoothAgent *m_agent;
+  CBluezBluetoothAgent *m_agent_wizard;
+  CBluezBluetoothAgent *m_agent_global;
 
   void SetupDefaultAdapter();
 };

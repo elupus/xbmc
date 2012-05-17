@@ -59,8 +59,8 @@ CBluezBluetoothDevice::CBluezBluetoothDevice(const char* address, const char *na
 
 /**************** CBluezBluetoothAgent ***************/
 
-CBluezBluetoothAgent::CBluezBluetoothAgent(DBusConnection *conn)
-  : CDBusAgent<CBluezBluetoothAgent>(conn, "/org/xbmc/BluetoothAgent")
+CBluezBluetoothAgent::CBluezBluetoothAgent(DBusConnection *conn, const char* path)
+  : CDBusAgent<CBluezBluetoothAgent>(conn, path)
 {
   RegisterMethod("org.bluez.Agent", "Release", &CBluezBluetoothAgent::Release);
   RegisterMethod("org.bluez.Agent", "RequestPinCode", &CBluezBluetoothAgent::RequestPinCode);
@@ -152,8 +152,6 @@ CBluezBluetoothSyscall::CBluezBluetoothSyscall()
 {
   SetupDefaultAdapter();
 
-  m_agent = NULL;
-
   if (m_hasAdapter)
   {
     DBusError error;
@@ -181,11 +179,34 @@ CBluezBluetoothSyscall::CBluezBluetoothSyscall()
       m_connection = NULL;
     }
     dbus_error_free (&error);
+
+    m_agent_wizard = new CBluezBluetoothAgent(m_connection, "/org/xbmc/BluetoothAgentWizard");
+    m_agent_global = new CBluezBluetoothAgent(m_connection, "/org/xbmc/BluetoothAgentGlobal");
+
+    CDBusMessage message("org.bluez", m_adapter.c_str(), "org.bluez.Adapter", "RegisterAgent");
+    message.AppendObjectPath(m_agent_global->GetPath());
+    message.AppendArgument("");
+    message.Send(m_connection);
   }
 }
 
 CBluezBluetoothSyscall::~CBluezBluetoothSyscall()
 {
+  if(m_agent_global)
+  {
+    CDBusMessage message("org.bluez", m_adapter.c_str(), "org.bluez.Adapter", "UnregisterAgent");
+    message.AppendObjectPath(m_agent_global->GetPath());
+    message.SendAsync(m_connection);
+
+    delete m_agent_global;
+    m_agent_global = NULL;
+  }
+  if(m_agent_wizard)
+  {
+    delete m_agent_wizard;
+    m_agent_wizard = NULL;
+  }
+
   if (m_connection)
   {
     dbus_connection_close(m_connection);
@@ -250,7 +271,6 @@ void CBluezBluetoothSyscall::StartDiscovery()
   {
     CDBusMessage message("org.bluez", m_adapter.c_str(), "org.bluez.Adapter", "StartDiscovery");
     message.Send(m_connection);
-    m_agent = new CBluezBluetoothAgent(m_connection);
   }
 }
 
@@ -260,18 +280,16 @@ void CBluezBluetoothSyscall::StopDiscovery()
   {
     CDBusMessage message("org.bluez", m_adapter.c_str(), "org.bluez.Adapter", "StopDiscovery");
     message.Send(m_connection);
-    delete m_agent;
-    m_agent = NULL;
   }
 }
 
 void CBluezBluetoothSyscall::CreateDevice(const char *address)
 {
-  if (m_hasAdapter && m_agent != NULL)
+  if (m_hasAdapter)
   {
     CDBusMessage message("org.bluez", m_adapter.c_str(), "org.bluez.Adapter", "CreatePairedDevice");
     message.AppendArgument(address);
-    message.AppendObjectPath(m_agent->GetPath());
+    message.AppendObjectPath(m_agent_wizard->GetPath());
     message.AppendArgument("DisplayYesNo");
     message.SendAsync(m_connection);
   }
@@ -411,7 +429,10 @@ bool CBluezBluetoothSyscall::PumpBluetoothEvents(IBluetoothEventsCallback *callb
           }
         }
       }
-      else if (m_agent != NULL && m_agent->ProcessMessage(msg))
+      else if (m_agent_global != NULL && m_agent_global->ProcessMessage(msg))
+      {
+      }
+      else if (m_agent_wizard != NULL && m_agent_wizard->ProcessMessage(msg))
       {
       }
       else if (dbus_message_get_type(msg) == DBUS_MESSAGE_TYPE_ERROR)
