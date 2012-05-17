@@ -138,6 +138,21 @@ bool CDBusMessage::SendAsync(DBusBusType type)
   return result;
 }
 
+DBusMessage *CDBusMessage::Send(DBusConnection *con)
+{
+  DBusError error;
+  dbus_error_init (&error);
+
+  DBusMessage *returnMessage = Send(con, &error);
+
+  if (dbus_error_is_set(&error))
+    CLog::Log(LOGERROR, "DBus: Error %s - %s", error.name, error.message);
+
+  dbus_error_free (&error);
+
+  return returnMessage;
+}
+
 DBusMessage *CDBusMessage::Send(DBusConnection *con, DBusError *error)
 {
   if (con && m_message)
@@ -149,6 +164,17 @@ DBusMessage *CDBusMessage::Send(DBusConnection *con, DBusError *error)
   }
 
   return m_reply;
+}
+
+bool CDBusMessage::SendAsync(DBusConnection *con)
+{
+  bool result;
+  if (con && m_message)
+    result = dbus_connection_send(con, m_message, NULL);
+  else
+    result = false;
+
+  return result;
 }
 
 void CDBusMessage::Close()

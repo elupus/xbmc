@@ -42,11 +42,13 @@ public:
   bool SendAsyncSession();
 
   DBusMessage *Send(DBusBusType type);
+  DBusMessage *Send(DBusConnection *con);
   DBusMessage *Send(DBusConnection *con, DBusError *error);
-private:
 
   bool SendAsync(DBusBusType type);
+  bool SendAsync(DBusConnection *con);
 
+private:
   void Close();
   void PrepareArgument();
   bool AppendVariant(int type, const char *signature, const void *value);
