@@ -322,14 +322,14 @@ bool CWin32BluetoothSyscall::PumpBluetoothEvents(IBluetoothEventsCallback *callb
       devices = g_discovery->m_devices;
     }
 
-    std::map<std::string, boost::shared_ptr<CWin32BluetoothDevice> > remain(m_devices);
+    DeviceMap remain(m_devices);
 
     for(std::vector<BLUETOOTH_DEVICE_INFO_STRUCT>::iterator it = devices.begin(); it != devices.end(); ++it)
     {
-      boost::shared_ptr<CWin32BluetoothDevice> p(new CWin32BluetoothDevice(*it));
+      DevicePtr p(new CWin32BluetoothDevice(*it));
       m_devices[p->GetID()] = p;
 
-      std::map<std::string, boost::shared_ptr<CWin32BluetoothDevice> >::iterator cur = remain.find(p->GetID());
+      DeviceMap::iterator cur = remain.find(p->GetID());
       if(cur == remain.end())
       {
         callback->OnDeviceFound(p.get());
@@ -350,7 +350,7 @@ bool CWin32BluetoothSyscall::PumpBluetoothEvents(IBluetoothEventsCallback *callb
       }
     }
 
-    for(std::map<std::string, boost::shared_ptr<CWin32BluetoothDevice> >::iterator it = remain.begin(); it != remain.end(); ++it)
+    for(DeviceMap::iterator it = remain.begin(); it != remain.end(); ++it)
     {
       m_devices.erase(it->first);
       callback->OnDeviceRemoved(it->second->GetAddress());

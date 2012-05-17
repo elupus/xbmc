@@ -51,14 +51,14 @@ public:
   std::vector<boost::shared_ptr<IBluetoothDevice> > GetDevices() 
   { 
     std::vector<boost::shared_ptr<IBluetoothDevice> > devices;
-    for(std::map<std::string, boost::shared_ptr<CWin32BluetoothDevice> >::iterator it = m_devices.begin(); it != m_devices.end(); ++it)
+    for(DeviceMap::iterator it = m_devices.begin(); it != m_devices.end(); ++it)
       devices.push_back(it->second);
     return devices;
   }
 
   boost::shared_ptr<IBluetoothDevice> GetDevice(const char *id)
   {
-    std::map<std::string, boost::shared_ptr<CWin32BluetoothDevice> >::iterator it = m_devices.find(id);
+    DeviceMap::iterator it = m_devices.find(id);
     if(it == m_devices.end())
       return boost::shared_ptr<IBluetoothDevice>();
     else
@@ -74,7 +74,10 @@ public:
   bool PumpBluetoothEvents(IBluetoothEventsCallback *callback);
 
 private:
-  std::map<std::string, boost::shared_ptr<CWin32BluetoothDevice> > m_devices;
+  typedef boost::shared_ptr<CWin32BluetoothDevice> DevicePtr;
+  typedef std::vector<DevicePtr>                   DeviceVec;
+  typedef std::map<std::string, DevicePtr>         DeviceMap;
+  DeviceMap                              m_devices;
   HBLUETOOTH_AUTHENTICATION_REGISTRATION m_auth;
 };
 
