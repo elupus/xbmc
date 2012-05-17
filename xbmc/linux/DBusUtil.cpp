@@ -51,11 +51,19 @@ CVariant CDBusUtil::GetVariant(const char *destination, const char *object, cons
   return result;
 }
 
-CVariant CDBusUtil::GetAll(const char *destination, const char *object, const char *interface)
+CVariant CDBusUtil::GetAll(const char *destination, const char *object, const char *arg)
 {
-  CDBusMessage message(destination, object, "org.freedesktop.DBus.Properties", "GetAll");
+  return CDBusUtil::GetAll(destination, object, "org.freedesktop.DBus.Properties", "GetAll", arg);
+}
+
+CVariant CDBusUtil::GetAll(const char *destination, const char *object, const char *interface, const char *method, const char *arg)
+{
+  CDBusMessage message(destination, object, interface, method);
   CVariant properties;
-  message.AppendArgument(interface);
+  if (arg != NULL)
+  {
+    message.AppendArgument(arg);
+  }
   DBusMessage *reply = message.SendSystem();
   if (reply)
   {
