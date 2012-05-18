@@ -25,6 +25,10 @@
 #include "BluetoothManager.h"
 #include "utils/log.h"
 #include "guilib/LocalizeStrings.h"
+#include "dialogs/GUIDialogKeyboard.h"
+#include "dialogs/GUIDialogNumeric.h"
+#include "dialogs/GUIDialogOK.h"
+#include "dialogs/GUIDialogYesNo.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "GUIUserMessages.h"
 
@@ -226,3 +230,23 @@ void CBluetoothManager::OnDeviceRemoved(const char *id)
   g_windowManager.SendMessage(msg);
 }
 
+bool CBluetoothManager::OnDevicePairRequest(IBluetoothDevicePtr device, CStdString& code, EPairingType type)
+{
+  if(type == EPAIRING_LEGACY)
+    return CGUIDialogKeyboard::ShowAndGetInput(code, g_localizeStrings.Get(16506), true, true);
+  if(type == EPAIRING_PASSKEY_REQUEST)
+    return CGUIDialogKeyboard::ShowAndGetInput(code, g_localizeStrings.Get(16506), true, true);
+  if(type == EPAIRING_PASSKEY_DISPLAY)
+    return CGUIDialogYesNo::ShowAndGetInput(g_localizeStrings.Get(16500), g_localizeStrings.Get(16507), code, "");
+  if(type == EPAIRING_NUMERIC_COMPARE)
+    return CGUIDialogYesNo::ShowAndGetInput(g_localizeStrings.Get(16500), g_localizeStrings.Get(16505), code, "");
+  return false;
+}
+
+void CBluetoothManager::OnDevicePairResult(IBluetoothDevicePtr device, bool success)
+{
+  if(success)
+    CGUIDialogKaiToast::QueueNotification(g_localizeStrings.Get(16500), "Paired with device");
+  else
+    CGUIDialogKaiToast::QueueNotification(g_localizeStrings.Get(16500), "Pairing failed with device");
+}

@@ -55,6 +55,17 @@ public:
   void DisconnectDevice(const char *id);
   void ProcessEvents();
 
+  enum EPairingType {
+    EPAIRING_LEGACY,
+    EPAIRING_PASSKEY_REQUEST,
+    EPAIRING_PASSKEY_DISPLAY,
+    EPAIRING_NUMERIC_COMPARE,
+    EPAIRING_OOB,
+  };
+
+  static bool OnDevicePairRequest(IBluetoothDevicePtr device, CStdString& code, EPairingType type);
+  static void OnDevicePairResult (IBluetoothDevicePtr device, bool success);
+
 private:
   void OnDeviceConnected(IBluetoothDevice *device);
   void OnDeviceDisconnected(IBluetoothDevice *device);

@@ -58,6 +58,8 @@ public:
   static DeviceType  GetDeviceTypeFromClass(uint32_t cls);
 };
 
+typedef boost::shared_ptr<IBluetoothDevice> IBluetoothDevicePtr;
+
 class IBluetoothEventsCallback
 {
 public:
