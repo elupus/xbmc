@@ -133,6 +133,7 @@ public:
   EINTERLACEMETHOD AutoInterlaceMethod(EINTERLACEMETHOD mInt);
 
   double GetPresentTime();
+  bool  SchedulePresentTime(double presenttime);
   void  WaitPresentTime(double presenttime);
 
   CStdString GetVSyncState();
