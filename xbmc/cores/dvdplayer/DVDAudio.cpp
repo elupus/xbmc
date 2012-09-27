@@ -40,6 +40,11 @@ CPTSOutputQueue::CPTSOutputQueue()
 void CPTSOutputQueue::Add(double pts, double duration)
 {
   CSingleLock lock(m_sync);
+
+  // drop re-adds, so current pts directly moves back
+  if(!m_queue.empty() && pts == m_queue.front().pts)
+    return;
+
   TPTSItem item;
   item.pts       = pts;
   item.duration  = duration;
