@@ -30,65 +30,60 @@
 
 using namespace std;
 
+#define BYTE_TO_TIME(a) DVD_SEC_TO_TIME((a) * m_SecondsPerByte)
 
 CPTSOutputQueue::CPTSOutputQueue()
 {
   Flush();
 }
 
-void CPTSOutputQueue::Add(double pts, double delay, double duration)
+void CPTSOutputQueue::Add(double pts, double duration)
 {
   CSingleLock lock(m_sync);
-
-  // don't accept a re-add, since that would cause time moving back
-  double last = m_queue.empty() ? m_current.pts : m_queue.back().pts;
-  if(last == pts)
-    return;
-
   TPTSItem item;
-  item.pts = pts;
-  item.timestamp = CDVDClock::GetAbsoluteClock() + delay;
-  item.duration = duration;
+  item.pts       = pts;
+  item.duration  = duration;
 
   // first one is applied directly
-  if(m_queue.empty() && m_current.pts == DVD_NOPTS_VALUE)
-    m_current = item;
-  else
-    m_queue.push(item);
+  m_queue.push_front(item);
 
   // call function to make sure the queue
   // doesn't grow should nobody call it
-  Current();
+  Current(DVD_SEC_TO_TIME(10));
 }
 void CPTSOutputQueue::Flush()
 {
   CSingleLock lock(m_sync);
-
-  while( !m_queue.empty() ) m_queue.pop();
-  m_current.pts = DVD_NOPTS_VALUE;
-  m_current.timestamp = 0.0;
-  m_current.duration = 0.0;
+  m_queue.clear();
 }
 
-double CPTSOutputQueue::Current()
+double CPTSOutputQueue::Current(double delay)
 {
   CSingleLock lock(m_sync);
 
-  if(!m_queue.empty() && m_current.pts == DVD_NOPTS_VALUE)
+  /* figure out where we are */
+  double total = 0.0;
+  std::list<TPTSItem>::iterator it;
+  for(it = m_queue.begin(); it != m_queue.end(); ++it)
   {
-    m_current = m_queue.front();
-    m_queue.pop();
+    total += it->duration;
+    if(total >= delay)
+      break;
   }
 
-  while( !m_queue.empty() && CDVDClock::GetAbsoluteClock() >= m_queue.front().timestamp )
-  {
-    m_current = m_queue.front();
-    m_queue.pop();
-  }
+  /* erase everything following this */
+  if(it != m_queue.end())
+    m_queue.erase(it++, m_queue.end());
 
-  if( m_current.timestamp == 0 ) return m_current.pts;
+  /* if at the end, make use of last value */
+  if(it == m_queue.end()
+  && it != m_queue.begin())
+    it--;
 
-  return m_current.pts + min(m_current.duration, (CDVDClock::GetAbsoluteClock() - m_current.timestamp));
+  if(it == m_queue.end())
+    return DVD_NOPTS_VALUE;
+  else
+    return it->pts + it->duration + delay - total;
 }
 
 
@@ -225,7 +220,7 @@ DWORD CDVDAudio::AddPackets(const DVDAudioFrame &audioframe)
   unsigned char* data = audioframe.data;
   DWORD len = audioframe.size;
 
-  DWORD total = len;
+  DWORD total  = len;
   DWORD copied;
 
   if (m_iBufferSize > 0) // See if there are carryover bytes from the last call. need to add them 1st.
@@ -249,15 +244,17 @@ DWORD CDVDAudio::AddPackets(const DVDAudioFrame &audioframe)
       CLog::Log(LOGERROR, "%s - failed to add leftover bytes to render", __FUNCTION__);
       return copied;
     }
-
+    m_time.Add(audioframe.pts - BYTE_TO_TIME(m_iBufferSize - copied), BYTE_TO_TIME(m_iBufferSize));
     m_iBufferSize = 0;
-    if (!len)
-      return copied; // We used up all the caller's data
   }
 
-  copied = AddPacketsRenderer(data, len, lock);
-  data += copied;
-  len -= copied;
+  if(len)
+  {
+    copied  = AddPacketsRenderer(data, len, lock);
+    data   += copied;
+    len    -= copied;
+    m_time.Add(audioframe.pts + BYTE_TO_TIME(data - audioframe.data), BYTE_TO_TIME(copied));
+  }
 
   // if we have more data left, save it for the next call to this funtion
   if (len > 0 && !m_bStop)
@@ -267,8 +264,6 @@ DWORD CDVDAudio::AddPackets(const DVDAudioFrame &audioframe)
     memcpy(m_pBuffer, data, len);
   }
 
-  double time_added = DVD_SEC_TO_TIME(m_SecondsPerByte * (data - audioframe.data));
-  m_time.Add(audioframe.pts, GetDelay() - time_added, audioframe.duration);
 
   return total;
 }
@@ -343,7 +338,6 @@ void CDVDAudio::Pause()
 {
   CSingleLock lock (m_critSection);
   if (m_pAudioStream) m_pAudioStream->Pause();
-  m_time.Flush();
 }
 
 void CDVDAudio::Resume()
@@ -428,5 +422,6 @@ void CDVDAudio::SetPlayingPts(double pts)
 {
   CSingleLock lock (m_critSection);
   m_time.Flush();
-  m_time.Add(pts, GetDelay(), 0);
+  double delay = GetDelay();
+  m_time.Add(pts - delay, delay);
 }

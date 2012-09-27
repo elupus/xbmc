@@ -25,7 +25,7 @@
 #endif
 #include "threads/CriticalSection.h"
 #include "PlatformDefs.h"
-#include <queue>
+#include <list>
 
 #include "cores/AudioEngine/Utils/AEChannelInfo.h"
 class IAEStream;
@@ -51,16 +51,15 @@ typedef struct stDVDAudioFrame DVDAudioFrame;
 class CPTSOutputQueue
 {
 private:
-  typedef struct {double pts; double timestamp; double duration;} TPTSItem;
-  TPTSItem m_current;
-  std::queue<TPTSItem> m_queue;
+  typedef struct {double pts; double duration;} TPTSItem;
+  std::list<TPTSItem> m_queue;
   CCriticalSection m_sync;
 
 public:
   CPTSOutputQueue();
-  void Add(double pts, double delay, double duration);
+  void Add(double pts, double duration);
   void Flush();
-  double Current();
+  double Current(double delay);
 };
 
 class CSingleLock;
@@ -85,7 +84,7 @@ public:
   void Destroy();
   DWORD AddPackets(const DVDAudioFrame &audioframe);
   double GetDelay(); // returns the time it takes to play a packet if we add one at this time
-  double GetPlayingPts() { return m_time.Current(); }
+  double GetPlayingPts() { return m_time.Current(GetDelay()); }
   void   SetPlayingPts(double pts);
   double GetCacheTime();  // returns total amount of data cached in audio output at this time
   double GetCacheTotal(); // returns total amount the audio device can buffer
