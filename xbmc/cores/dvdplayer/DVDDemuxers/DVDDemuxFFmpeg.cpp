@@ -434,6 +434,10 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
   m_bMatroska = strncmp(m_pFormatContext->iformat->name, "matroska", 8) == 0;	// for "matroska.webm"
   m_bAVI = strcmp(m_pFormatContext->iformat->name, "avi") == 0;
 
+  // attempt to correct for timestamp wrapbacks
+  if(m_pFormatContext->iformat->flags & AVFMT_TS_DISCONT)
+    m_dllAvUtil.av_opt_set(m_pFormatContext, "correct_ts_overflow", "1", 0);
+
   if (streaminfo)
   {
     /* too speed up dvd switches, only analyse very short */
