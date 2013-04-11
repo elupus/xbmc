@@ -897,9 +897,23 @@ int CDVDDemuxFFmpeg::GetStreamLength()
   return (int)(m_pFormatContext->duration / (AV_TIME_BASE / 1000));
 }
 
+/**
+ * @breif Finds stream based on demuxer index
+ */
 CDemuxStream* CDVDDemuxFFmpeg::GetStream(int iStreamId)
 {
-  std::map<int, CDemuxStream*>::iterator it = m_streams.find(iStreamId);
+  if(iStreamId >= 0 && (size_t)iStreamId < m_stream_index.size())
+    return m_stream_index[iStreamId]->second;
+  else
+    return NULL;
+}
+
+/**
+ * @breif Finds stream based on ffmpeg index
+ */
+CDemuxStream* CDVDDemuxFFmpeg::GetStreamInternal(int iId)
+{
+  std::map<int, CDemuxStream*>::iterator it = m_streams.find(iId);
   if (it == m_streams.end())
     return NULL;
   else
@@ -908,7 +922,7 @@ CDemuxStream* CDVDDemuxFFmpeg::GetStream(int iStreamId)
 
 int CDVDDemuxFFmpeg::GetNrOfStreams()
 {
-  return m_streams.size();
+  return m_stream_index.size();
 }
 
 static double SelectAspect(AVStream* st, bool* forced)
@@ -935,7 +949,6 @@ void CDVDDemuxFFmpeg::CreateStreams(unsigned int program)
   if (m_pFormatContext->nb_programs)
   {
     // check if desired program is available
-    bool found = false;
     if (program < m_pFormatContext->nb_programs && m_pFormatContext->programs[program]->nb_stream_indexes > 0)
     {
       m_program = program;
@@ -978,6 +991,7 @@ void CDVDDemuxFFmpeg::DisposeStreams()
   for(it = m_streams.begin(); it != m_streams.end(); ++it)
     delete it->second;
   m_streams.clear();
+  m_stream_index.clear();
 }
 
 void CDVDDemuxFFmpeg::AddStream(int iId)
@@ -986,7 +1000,6 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
   if (pStream)
   {
     CDemuxStream* stream = NULL;
-    CDemuxStream* old = GetStream(iId);
 
     switch (pStream->codec->codec_type)
     {
@@ -1137,12 +1150,6 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
     // set ffmpeg type
     stream->orig_type = pStream->codec->codec_type;
 
-    // delete old stream after new is created
-    // since dvdplayer uses the pointer to know
-    // if something changed in the demuxer
-    if (old)
-      delete old;
-
     // generic stuff
     if (pStream->duration != (int64_t)AV_NOPTS_VALUE)
       stream->iDuration = (int)((pStream->duration / AV_TIME_BASE) & 0xFFFFFFFF);
@@ -1152,7 +1159,6 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
     stream->profile = pStream->codec->profile;
     stream->level   = pStream->codec->level;
 
-    stream->iId = iId;
     stream->source = STREAM_SOURCE_DEMUX;
     stream->pPrivate = pStream;
     stream->flags = (CDemuxStream::EFlags)pStream->disposition;
@@ -1209,9 +1215,36 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
     else
       stream->iPhysicalId = pStream->id;
 
-    m_streams[iId] = stream;
+    AddStream(iId, stream);
   }
 }
+
+/**
+ * @brief Adds or updates a demux stream based in ffmpeg id
+ */
+void CDVDDemuxFFmpeg::AddStream(int iId, CDemuxStream* stream)
+{
+  std::pair<std::map<int, CDemuxStream*>::iterator, bool> res;
+
+  res = m_streams.insert(std::make_pair(iId, stream));
+  if(res.second)
+  {
+    /* was new stream */
+    stream->iId = m_stream_index.size();
+    m_stream_index.push_back(res.first);
+  }
+  else
+  {
+    /* replace old stream, keeping old index */
+    stream->iId = res.first->second->iId;
+
+    delete res.first->second;
+    res.first->second = stream;
+  }
+  if(g_advancedSettings.m_logLevel > LOG_LEVEL_NORMAL)
+    CLog::Log(LOGDEBUG, "CDVDDemuxFFmpeg::AddStream(%d, ...) -> %d", iId, stream->iId);
+}
+
 
 std::string CDVDDemuxFFmpeg::GetFileName()
 {
