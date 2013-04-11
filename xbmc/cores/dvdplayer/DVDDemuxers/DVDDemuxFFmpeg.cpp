@@ -976,14 +976,7 @@ void CDVDDemuxFFmpeg::DisposeStreams()
 {
   std::map<int, CDemuxStream*>::iterator it;
   for(it = m_streams.begin(); it != m_streams.end(); ++it)
-  {
-    if (it->second)
-    {
-      if (it->second->ExtraData)
-        delete[] (BYTE*)(it->second->ExtraData);
-      delete it->second;
-    }
-  }
+    delete it->second;
   m_streams.clear();
 }
 
@@ -1147,10 +1140,7 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
     // since dvdplayer uses the pointer to know
     // if something changed in the demuxer
     if (old)
-    {
-      if( old->ExtraData ) delete[] (BYTE*)(old->ExtraData);
       delete old;
-    }
 
     // generic stuff
     if (pStream->duration != (int64_t)AV_NOPTS_VALUE) m_streams[iId]->iDuration = (int)((pStream->duration / AV_TIME_BASE) & 0xFFFFFFFF);
