@@ -3945,6 +3945,10 @@ void COMXPlayer::GetVideoStreamInfo(SPlayerVideoStreamInfo &info)
   info.videoCodecName = retVal;
   info.videoAspectRatio = g_renderManager.GetAspectRatio();
   g_renderManager.GetVideoRect(info.SrcRect, info.DestRect);
+  if (m_CurrentVideo.hint.stereo_mode != "")
+    info.stereoMode = m_CurrentVideo.hint.stereo_mode;
+  else
+    info.stereoMode = "mono";
 }
 
 int COMXPlayer::GetSourceBitrate()
