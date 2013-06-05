@@ -590,6 +590,10 @@ void CBaseRenderer::ManageDisplay()
     else if(stereo_view == RENDER_STEREO_VIEW_RIGHT) stereo_view = RENDER_STEREO_VIEW_LEFT;
   }
 
+  // use left eye in case stereoscopic video should be converted to "normal" (non-stereoscopic)
+  if(m_iFlags & CONF_FLAGS_STEREO_RENDERMODE_MONO)
+    stereo_view = RENDER_STEREO_VIEW_LEFT;
+
   switch(stereo_mode)
   {
     case CONF_FLAGS_STEREO_MODE_TAB:
