@@ -57,14 +57,14 @@ bool CStereoscopicsManager::HasStereoscopicSupport(void)
 
 RENDER_STEREO_MODE CStereoscopicsManager::GetStereoMode(void)
 {
-  return (RENDER_STEREO_MODE) CSettings::Get().GetInt("videoscreen.mode3d");
+  return (RENDER_STEREO_MODE) CSettings::Get().GetInt("videoscreen.stereoscopicmode");
 }
 
 void CStereoscopicsManager::SetStereoMode(const RENDER_STEREO_MODE &mode)
 {
   RENDER_STEREO_MODE currentMode = GetStereoMode();
   if (mode != currentMode)
-    CSettings::Get().SetInt("videoscreen.mode3d", mode);
+    CSettings::Get().SetInt("videoscreen.stereoscopicmode", mode);
 }
 
 void CStereoscopicsManager::OnSettingChanged(const CSetting *setting)
