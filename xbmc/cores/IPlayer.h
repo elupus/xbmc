@@ -105,11 +105,13 @@ struct SPlayerVideoStreamInfo
   std::string videoCodecName;
   CRect SrcRect;
   CRect DestRect;
+  std::string stereoMode;
 
   SPlayerVideoStreamInfo()
   {
     bitrate = 0;
     videoAspectRatio = 1.0f;
+    stereoMode = "mono";
   }
 };
 

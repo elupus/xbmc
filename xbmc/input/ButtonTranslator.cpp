@@ -121,7 +121,6 @@ static const ActionMapping actions[] =
         {"verticalshiftdown" , ACTION_VSHIFT_DOWN},
         {"nextresolution"    , ACTION_CHANGE_RESOLUTION},
         {"audiotoggledigital", ACTION_TOGGLE_DIGITAL_ANALOG},
-        {"3dmode"            , ACTION_MODE3D},
         {"number0"           , REMOTE_0},
         {"number1"           , REMOTE_1},
         {"number2"           , REMOTE_2},
@@ -223,6 +222,13 @@ static const ActionMapping actions[] =
         {"createepisodebookmark" , ACTION_CREATE_EPISODE_BOOKMARK},
         {"settingsreset"      , ACTION_SETTINGS_RESET},
         {"settingslevelchange", ACTION_SETTINGS_LEVEL_CHANGE},
+
+        // 3D movie playback/GUI
+        {"stereomode"                , ACTION_STEREOMODE_SELECT}, // cycle 3D modes, for now an alias for next
+        {"nextstereomode"            , ACTION_STEREOMODE_NEXT},
+        {"previousstereomode"        , ACTION_STEREOMODE_PREVIOUS},
+        {"togglestereomode"          , ACTION_STEREOMODE_TOGGLE},
+        {"stereomodetomono"          , ACTION_STEREOMODE_TOMONO},
 
         // PVR actions
         {"channelup"             , ACTION_CHANNEL_UP},

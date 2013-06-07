@@ -63,6 +63,7 @@ CGraphicContext::CGraphicContext(void) :
   /*m_groupTransform*/
   , m_stereoView(RENDER_STEREO_VIEW_OFF)
   , m_stereoMode(RENDER_STEREO_MODE_OFF)
+  , m_currentStereoMode(RENDER_STEREO_MODE_OFF)
 {
 }
 
@@ -256,7 +257,7 @@ CRect CGraphicContext::StereoCorrection(const CRect &rect, bool scale) const
 {
   CRect res(rect);
 
-  if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
+  if (m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
   {
     if(scale)
     {
@@ -269,7 +270,7 @@ CRect CGraphicContext::StereoCorrection(const CRect &rect, bool scale) const
       res.y2 += 0.5f * m_iScreenHeight;
     }
   }
-  if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
+  if (m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
   {
     if(scale)
     {
@@ -328,7 +329,7 @@ void CGraphicContext::SetFullScreenVideo(bool bOnOff)
   m_bFullScreenVideo = bOnOff;
 
 #if defined(HAS_VIDEO_PLAYBACK)
-  if(m_bFullScreenRoot)
+  if (m_bFullScreenRoot)
   {
     bool allowDesktopRes = CSettings::Get().GetInt("videoplayer.adjustrefreshrate") == ADJUST_REFRESHRATE_ALWAYS;
     if(m_bFullScreenVideo || (!allowDesktopRes && g_application.IsPlayingVideo()))
@@ -643,9 +644,9 @@ float CGraphicContext::GetPixelRatio(RESOLUTION iRes) const
   if (iRes >= 0 && iRes < (int)CDisplaySettings::Get().ResolutionInfoSize())
     ratio = CDisplaySettings::Get().GetResolutionInfo(iRes).fPixelRatio;
 
-  if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
+  if(m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
     ratio *= 0.5;
-  if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
+  if(m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
     ratio *= 2.0;
 
   return ratio;
@@ -724,12 +725,12 @@ void CGraphicContext::SetScalingResolution(const RESOLUTION_INFO &res, bool need
     m_guiScaleY = 1.0f;
   }
 
-  if     (m_stereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
+  if     (m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
   {
     m_guiScaleX    *= 2.0;
     m_guiTransform  = TransformMatrix::CreateScaler(0.5, 1.0, 1.0) * m_guiTransform;
   }
-  else if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
+  else if(m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
   {
     m_guiScaleY    *= 2.0;
     m_guiTransform  = TransformMatrix::CreateScaler(1.0, 0.5, 1.0) * m_guiTransform;
@@ -763,11 +764,11 @@ void CGraphicContext::UpdateFinalTransform(const TransformMatrix &matrix)
   // the nearest pixel (vertex shader perhaps?)
   m_finalTransform.Reset();
 
-  if(m_stereoView == RENDER_STEREO_VIEW_RIGHT)
+  if (m_stereoView == RENDER_STEREO_VIEW_RIGHT)
   {
-    if     (m_stereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
+    if      (m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
       m_finalTransform *= TransformMatrix::CreateTranslation((float)m_iScreenWidth * 0.5, 0.0, 0.0);
-    else if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
+    else if (m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
       m_finalTransform *= TransformMatrix::CreateTranslation(0.0, (float)m_iScreenHeight * 0.5, 0.0);
   }
  
@@ -786,7 +787,7 @@ void CGraphicContext::SetStereoView(RENDER_STEREO_VIEW view)
   viewport = StereoCorrection(viewport, true);
 
   m_viewStack.push(viewport);
-  g_Windowing.SetStereoMode(m_stereoMode, m_stereoView);
+  g_Windowing.SetStereoMode(m_currentStereoMode, m_stereoView);
   g_Windowing.SetViewPort(viewport);
 }
 
@@ -795,9 +796,9 @@ void CGraphicContext::InvertFinalCoords(float &x, float &y) const
   m_finalTransform.InverseTransformPosition(x, y);
 
   // to make mouse behave as we move across screen, we need to modify for splits
-  if     (m_stereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
+  if     (m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
     x *= 0.5;
-  else if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
+  else if(m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
     y *= 0.5;
 }
 
@@ -874,14 +875,14 @@ void CGraphicContext::UpdateCameraPosition(const CPoint &camera)
 {
   CPoint camera2(camera);
 
-  if     (m_stereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
+  if     (m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_VERTICAL)
   {
     if(m_stereoView == RENDER_STEREO_VIEW_LEFT)
       camera2.x -= 0.25f * m_iScreenWidth;
     else if(m_stereoView == RENDER_STEREO_VIEW_RIGHT)
       camera2.x += 0.25f * m_iScreenWidth;
   }
-  else if(m_stereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
+  else if(m_currentStereoMode == RENDER_STEREO_MODE_SPLIT_HORIZONTAL)
   {
     if(m_stereoView == RENDER_STEREO_VIEW_LEFT)
       camera2.y -= 0.25f * m_iScreenHeight;
@@ -971,10 +972,10 @@ void CGraphicContext::SetMediaDir(const CStdString &strMediaDir)
 void CGraphicContext::Flip(const CDirtyRegionList& dirty)
 {
   g_Windowing.PresentRender(dirty);
-  RENDER_STEREO_MODE mode = (RENDER_STEREO_MODE)CSettings::Get().GetInt("videoscreen.mode3d");
-  if(m_stereoMode != mode)
+
+  if(m_stereoMode != m_currentStereoMode)
   {
-    m_stereoMode = mode;
+    m_currentStereoMode = m_stereoMode;
     SetStereoView(RENDER_STEREO_VIEW_OFF);
     g_application.ReloadSkin();
   }

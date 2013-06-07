@@ -44,6 +44,7 @@
 #include "playlists/PlayListFactory.h"
 #include "guilib/GUIFontManager.h"
 #include "guilib/GUIColorManager.h"
+#include "guilib/StereoscopicsManager.h"
 #include "guilib/GUITextLayout.h"
 #include "addons/Skin.h"
 #ifdef HAS_PYTHON
@@ -1404,6 +1405,8 @@ bool CApplication::Initialize()
         StartPVRManager(false);
         g_windowManager.ActivateWindow(g_SkinInfo->GetFirstWindow());
       }
+
+      CStereoscopicsManager::Get().Initialize();
     }
 
   }
@@ -1841,6 +1844,7 @@ void CApplication::LoadSkin(const SkinPtr& skin)
   g_windowManager.AddMsgTarget(&g_playlistPlayer);
   g_windowManager.AddMsgTarget(&g_infoManager);
   g_windowManager.AddMsgTarget(&g_fontManager);
+  g_windowManager.AddMsgTarget(&CStereoscopicsManager::Get());
   g_windowManager.SetCallback(*this);
   g_windowManager.Initialize();
   CTextureCache::Get().Initialize();
@@ -2579,6 +2583,10 @@ bool CApplication::OnAction(const CAction &action)
   if (g_PVRManager.OnAction(action))
     return true;
 
+  // forward action to graphic context and see if it can handle it
+  if (CStereoscopicsManager::Get().OnAction(action))
+    return true;
+
   if (IsPlaying())
   {
     // forward channel switches to the player - he knows what to do
@@ -2779,15 +2787,6 @@ bool CApplication::OnAction(const CAction &action)
     else if (iPlaylist == PLAYLIST_MUSIC && g_windowManager.GetActiveWindow() != WINDOW_MUSIC_PLAYLIST)
       g_windowManager.ActivateWindow(WINDOW_MUSIC_PLAYLIST);
     return true;
-  }
-  else if (action.GetID() == ACTION_MODE3D)
-  {
-    int mode = CSettings::Get().GetInt("videoscreen.mode3d") + 1;
-    if (mode > RENDER_STEREO_MODE_HARDWAREBASED)
-      mode = RENDER_STEREO_MODE_OFF;
-
-    CSettings::Get().SetInt("videoscreen.mode3d", mode);
-    CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(36501), g_localizeStrings.Get(36502 + mode));
   }
   return false;
 }

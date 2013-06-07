@@ -1104,7 +1104,11 @@ static unsigned int GetStereoModeFlags(const std::string mode)
     convert["block_lr"]               = 0u;
     convert["block_rl"]               = 0u;
   }
-  return convert[mode];
+  unsigned int result = convert[mode];
+  if (g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_MONO)
+    result |= CONF_FLAGS_STEREO_RENDERMODE_MONO;
+
+  return result;
 }
 
 int CDVDPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)

@@ -14125,44 +14125,116 @@ msgstr ""
 #empty strings from id 36421 to 36499
 #end reservation
 
-#: xbmc/settings/GUISettings.cpp
-msgctxt "#36501"
-msgid "Stereoscopic 3d Mode"
+#: system/settings/settings.xml
+msgctxt "#36500"
+msgid "Enable stereoscopic support"
 msgstr ""
 
-#: xbmc/settings/GUISettings.cpp
+#: system/settings/settings.xml
+msgctxt "#36501"
+msgid "Stereoscopic Mode"
+msgstr ""
+
+#: system/settings/settings.xml
 msgctxt "#36502"
 msgid "None"
 msgstr ""
 
-#: xbmc/settings/GUISettings.cpp
+#: system/settings/settings.xml
 msgctxt "#36503"
 msgid "Over/Under"
 msgstr ""
 
-#: xbmc/settings/GUISettings.cpp
+#: system/settings/settings.xml
 msgctxt "#36504"
 msgid "Side by side"
 msgstr ""
 
-#: xbmc/settings/GUISettings.cpp
+#: system/settings/settings.xml
 msgctxt "#36505"
 msgid "Anaglyph Red/Cyan"
 msgstr ""
 
-#: xbmc/settings/GUISettings.cpp
+#: system/settings/settings.xml
 msgctxt "#36506"
 msgid "Anaglyph Green/Magenta"
 msgstr ""
 
-#: xbmc/settings/GUISettings.cpp
+#: system/settings/settings.xml
 msgctxt "#36507"
 msgid "Interlaced"
 msgstr ""
 
-#: xbmc/settings/GUISettings.cpp
+#: system/settings/settings.xml
 msgctxt "#36508"
 msgid "Hardware Based"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#36509"
+msgid "Mono (2D)"
+msgstr ""
+
+#reserved strings for 3d modes 36509 - 36520
+
+#: system/settings/settings.xml
+msgctxt "#36520"
+msgid "Playback mode of stereoscopic movies"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#36521"
+msgid "Ask me"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#36522"
+msgid "Use preferred mode"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#36523"
+msgid "don't do anything"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#36524"
+msgid "Preferred stereoscopic mode"
+msgstr ""
+
+#: settings/DisplaySettings.cpp
+msgctxt "#36525"
+msgid "Sames as movie (autodetect)"
+msgstr ""
+
+#: guilib/StereoscopicsManager.cpp
+msgctxt "#36526"
+msgid "Disable stereoscopic mode when playback stopped"
+msgstr ""
+
+#: guilib/StereoscopicsManager.cpp
+msgctxt "#36527"
+msgid "This movie is stereoscopic. Select playback mode"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#36528"
+msgid "Select stereoscopic mode"
+msgstr ""
+
+#: guilib/StereoscopicsManager.cpp
+msgctxt "#36529"
+msgid "Mono (2D)"
+msgstr ""
+
+#: guilib/StereoscopicsManager.cpp
+msgctxt "#36530"
+msgid "Preferred stereoscopic mode (3D)"
+msgstr ""
+
+#: guilib/StereoscopicsManager.cpp
+msgctxt "#36531"
+msgid "Other"
 msgstr ""
 
 #reserved strings 365XX
