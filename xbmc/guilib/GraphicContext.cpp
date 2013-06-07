@@ -976,7 +976,7 @@ void CGraphicContext::Flip(const CDirtyRegionList& dirty)
   {
     m_stereoMode = mode;
     SetStereoView(RENDER_STEREO_VIEW_OFF);
-    g_application.ReloadSkin();
+    g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_RENDERER_RESET);
   }
 }
 
