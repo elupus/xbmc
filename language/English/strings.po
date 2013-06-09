@@ -14232,12 +14232,12 @@ msgstr ""
 
 #: guilib/StereoscopicsManager.cpp
 msgctxt "#36530"
-msgid "Preferred stereoscopic mode (3D)"
+msgid "Preferred mode"
 msgstr ""
 
 #: guilib/StereoscopicsManager.cpp
 msgctxt "#36531"
-msgid "Other"
+msgid "Select alternate mode..."
 msgstr ""
 
 #reserved strings 365XX
