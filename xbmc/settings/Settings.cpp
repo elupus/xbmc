@@ -39,6 +39,7 @@
 #include "guilib/GUIAudioManager.h"
 #include "guilib/GUIFontManager.h"
 #include "guilib/LocalizeStrings.h"
+#include "guilib/StereoscopicsManager.h"
 #include "input/MouseStat.h"
 #if defined(TARGET_WINDOWS)
 #include "input/windows/WINJoystick.h"
@@ -383,6 +384,7 @@ void CSettings::Uninitialize()
   m_settingsManager->UnregisterCallback(&g_advancedSettings);
   m_settingsManager->UnregisterCallback(&CMediaSettings::Get());
   m_settingsManager->UnregisterCallback(&CDisplaySettings::Get());
+  m_settingsManager->UnregisterCallback(&CStereoscopicsManager::Get());
   m_settingsManager->UnregisterCallback(&g_application);
   m_settingsManager->UnregisterCallback(&g_audioManager);
   m_settingsManager->UnregisterCallback(&g_charsetConverter);
@@ -831,6 +833,10 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert("videoscreen.resolution");
   settingSet.insert("videoscreen.screenmode");
   m_settingsManager->RegisterCallback(&CDisplaySettings::Get(), settingSet);
+
+  settingSet.clear();
+  settingSet.insert("videoscreen.hasstereoscopicsupport");
+  m_settingsManager->RegisterCallback(&CStereoscopicsManager::Get(), settingSet);
 
   settingSet.clear();
   settingSet.insert("audiooutput.channels");
