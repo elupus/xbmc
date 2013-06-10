@@ -3099,15 +3099,11 @@ bool COMXPlayer::OpenVideoStream(int iStream, int source, bool reset)
     m_omxPlayerVideo.SendMessage(new CDVDMsg(CDVDMsg::GENERAL_RESET));
 
   unsigned flags = 0;
-  switch(CStereoscopicsManager::Get().DetectStereoModeByString(m_filename))
-  {
-  case 'left_right':
+  std::string mode = CStereoscopicsManager::Get().DetectStereoModeByString(m_filename);
+  if (mode == "left_right")
     flags = CONF_FLAGS_STEREO_MODE_SBS;
-    break;
-  case 'top_bottom':
+  else if (mode == "top_bottom")
     flags = CONF_FLAGS_STEREO_MODE_TAB;
-    break;
-  }
   m_omxPlayerVideo.SetFlags(flags);
 
   /* store information about stream */
