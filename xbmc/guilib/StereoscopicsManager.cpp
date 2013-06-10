@@ -368,7 +368,7 @@ void CStereoscopicsManager::OnPlaybackStarted(void)
       RENDER_STEREO_MODE preferred = GetPreferredPlaybackMode();
 
       // add choices
-      pDlgSelect->Add( g_localizeStrings.Get(36530) + " - " + CStereoscopicsManager::Get().GetLabelForStereoMode(preferred) );
+      pDlgSelect->Add( g_localizeStrings.Get(36530) + " (" + CStereoscopicsManager::Get().GetLabelForStereoMode(preferred) + ")" );
       pDlgSelect->Add( g_localizeStrings.Get(36529) ); // mono / 2d
       pDlgSelect->Add( g_localizeStrings.Get(36531) ); // other / select
 
@@ -399,7 +399,10 @@ void CStereoscopicsManager::OnPlaybackStarted(void)
       SetStereoMode(mode);
     }
     break;
-  case 2: // do nothing; play as is
+  case 2: // mono
+    SetStereoMode(RENDER_STEREO_MODE_MONO);
+    break;
+  case 3: // do nothing; play as is
   default:
     break;
   }
