@@ -615,7 +615,7 @@ void CDisplaySettings::SettingOptionsPreferredStereoscopicViewModesFiller(const 
   for (int i = RENDER_STEREO_MODE_OFF +1; i < RENDER_STEREO_MODE_COUNT; i++)
   {
     RENDER_STEREO_MODE mode = (RENDER_STEREO_MODE) i;
-    if (g_Windowing.SupportsStereo(mode))
+    if (mode != RENDER_STEREO_MODE_MONO && g_Windowing.SupportsStereo(mode))
       list.push_back(make_pair(CStereoscopicsManager::Get().GetLabelForStereoMode(mode), mode));
   }
 }

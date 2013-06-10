@@ -532,7 +532,7 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
   if (pElement)
   {
     XMLUtils::GetString(pElement, "stereoscopicflagssbs", m_stereoscopicflags_sbs);
-    XMLUtils::GetString(pElement, "stereoscopicflagstab", m_stereoscopicflags_sbs);
+    XMLUtils::GetString(pElement, "stereoscopicflagstab", m_stereoscopicflags_tab);
     XMLUtils::GetFloat(pElement, "subsdelayrange", m_videoSubsDelayRange, 10, 600);
     XMLUtils::GetFloat(pElement, "audiodelayrange", m_videoAudioDelayRange, 10, 600);
     XMLUtils::GetInt(pElement, "blackbarcolour", m_videoBlackBarColour, 0, 255);
