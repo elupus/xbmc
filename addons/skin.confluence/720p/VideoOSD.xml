@@ -599,6 +599,18 @@
 			</control>
 		</control>
 		<!-- STEREOSCOPIC 3D !LiveTV -->
+		<control type="button" id="520">
+			<description>Fake button for mouse control</description>
+			<posx>455r</posx>
+			<posy>350r</posy>
+			<width>256</width>
+			<height>300</height>
+			<label>-</label>
+			<font>-</font>
+			<texturenofocus>-</texturenofocus>
+			<texturefocus>-</texturefocus>
+			<visible>Control.HasFocus(520) | Control.HasFocus(255) | ControlGroup(500).HasFocus</visible>
+		</control>
 		<control type="grouplist" id="500">
 			<visible>System.GetBool(videoscreen.hasstereoscopicsupport) + ![Window.IsVisible(SliderDialog) | Window.IsVisible(OSDVideoSettings) | Window.IsVisible(OSDAudioSettings) | Window.IsVisible(VideoBookmarks)]</visible>
 			<animation effect="fade" time="200">VisibleChange</animation>
@@ -613,7 +625,7 @@
 			<onup>255</onup>
 			<ondown>255</ondown>
 			<orientation>vertical</orientation>
-			<visible>Control.HasFocus(255) | ControlGroup(500).HasFocus</visible>
+			<visible>Control.HasFocus(255) | ControlGroup(500).HasFocus | Control.HasFocus(520)</visible>
 			<include>VisibleFadeEffect</include>
 			<control type="group">
 				<description>Header</description>
@@ -680,7 +692,7 @@
 				<pulseonselect>false</pulseonselect>
 				<visible>VideoPlayer.IsStereoscopic</visible>
 			</control>
-			<control type="image" id="">
+			<control type="image" id="549">
 				<description>Footer</description>
 				<width>256</width>
 				<height>52</height>
@@ -688,6 +700,18 @@
 			</control>
 		</control>
 		<!-- STEREOSCOPIC 3D LiveTV -->
+		<control type="button" id="570">
+			<description>Fake button for mouse control</description>
+			<posx>340r</posx>
+			<posy>350r</posy>
+			<width>256</width>
+			<height>300</height>
+			<label>-</label>
+			<font>-</font>
+			<texturenofocus>-</texturenofocus>
+			<texturefocus>-</texturefocus>
+			<visible>Control.HasFocus(570) | Control.HasFocus(354) | ControlGroup(550).HasFocus</visible>
+		</control>
 		<control type="grouplist" id="550">
 			<visible>System.GetBool(videoscreen.hasstereoscopicsupport) + ![Window.IsVisible(SliderDialog) | Window.IsVisible(OSDVideoSettings) | Window.IsVisible(OSDAudioSettings) | Window.IsVisible(VideoBookmarks) | Window.IsVisible(PVROSDChannels) | Window.IsVisible(PVROSDGuide)]</visible>
 			<animation effect="fade" time="200">VisibleChange</animation>
@@ -702,7 +726,7 @@
 			<onup>354</onup>
 			<ondown>354</ondown>
 			<orientation>vertical</orientation>
-			<visible>Control.HasFocus(354) | ControlGroup(550).HasFocus</visible>
+			<visible>Control.HasFocus(354) | ControlGroup(550).HasFocus | Control.HasFocus(570)</visible>
 			<include>VisibleFadeEffect</include>
 			<control type="group">
 				<description>Header</description>
@@ -769,7 +793,7 @@
 				<pulseonselect>false</pulseonselect>
 				<visible>VideoPlayer.IsStereoscopic</visible>
 			</control>
-			<control type="image" id="">
+			<control type="image" id="599">
 				<description>Footer</description>
 				<width>256</width>
 				<height>52</height>
