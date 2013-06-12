@@ -642,6 +642,9 @@
     <ClCompile Include="..\..\xbmc\cores\VideoRenderers\OverlayRendererUtil.cpp">
       <Filter>cores\VideoRenderers</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\cores\VideoRenderers\RenderFlags.cpp">
+      <Filter>cores\VideoRenderers</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\cores\VideoRenderers\RenderManager.cpp">
       <Filter>cores\VideoRenderers</Filter>
     </ClCompile>
@@ -3491,6 +3494,9 @@
       <Filter>cores\VideoRenderers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\cores\VideoRenderers\OverlayRendererUtil.h">
+      <Filter>cores\VideoRenderers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\cores\VideoRenderers\RenderFlags.h">
       <Filter>cores\VideoRenderers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\cores\VideoRenderers\RenderManager.h">
