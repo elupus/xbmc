@@ -253,8 +253,7 @@ void CStereoscopicsManager::OnSettingChanged(const CSetting *setting)
   {
     RENDER_STEREO_MODE mode = GetStereoMode();
     CLog::Log(LOGDEBUG, "StereoscopicsManager: stereo mode setting changed to %s", GetLabelForStereoMode(mode).c_str());
-    if(HasStereoscopicSupport())
-      ApplyStereoMode(mode);
+    ApplyStereoMode(mode);
   }
 }
 
