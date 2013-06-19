@@ -98,10 +98,6 @@ bool CGUIRSSControl::UpdateColors()
   changed |= m_label.UpdateColors();
   changed |= m_headlineColor.Update();
   changed |= m_channelColor.Update();
-
-  if(changed)
-    m_dirty = true;
-
   return changed;
 }
 
@@ -114,7 +110,7 @@ void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyre
     // Create RSS background/worker thread if needed
     if (m_pReader == NULL)
     {
-      dirty = false;
+      dirty = true;
       if (CRssManager::Get().GetReader(GetID(), GetParentID(), this, m_pReader))
         m_scrollInfo.characterPos = m_pReader->m_SavedScrollPos;
       else
