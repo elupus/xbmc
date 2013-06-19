@@ -463,6 +463,7 @@ bool CDVDPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &options)
     SetPlaySpeed(DVD_PLAYSPEED_NORMAL);
 
     m_State.Clear();
+    m_Queue.Clear();
     m_UpdateApplication = 0;
     m_offset_pts = 0;
 
@@ -501,6 +502,24 @@ bool CDVDPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &options)
     CLog::Log(LOGERROR, "%s - Exception thrown on open", __FUNCTION__);
     return false;
   }
+}
+
+bool CDVDPlayer::QueueNextFile(const CFileItem &file)
+{
+  if(!IsPlaying())
+    return false;
+
+  CSingleLock lock(m_Queue);
+  m_Queue.item  = file;
+  m_Queue.state = SPlayQueue::QUEUED;
+  return true;
+}
+
+void CDVDPlayer::OnNothingToQueueNotify()
+{
+  CLog::Log(LOGDEBUG, "CDVDPlayer::OnNothingToQueueNotify()");
+  CSingleLock lock(m_Queue);
+  m_Queue.state = SPlayQueue::FAILED;
 }
 
 bool CDVDPlayer::CloseFile()
@@ -1066,12 +1085,6 @@ void CDVDPlayer::Process()
     // should we open a new demuxer?
     if(!m_pDemuxer)
     {
-      if (m_pInputStream->NextStream() == CDVDInputStream::NEXTSTREAM_NONE)
-        break;
-
-      if (m_pInputStream->IsEOF())
-        break;
-
       if (OpenDemuxStream() == false)
       {
         m_bAbortRequest = true;
@@ -1089,6 +1102,16 @@ void CDVDPlayer::Process()
 
       UpdateApplication(0);
       UpdatePlayState(0);
+    }
+
+    // if this was a queued event, notify application
+    { CSingleLock lock(m_Queue);
+      if(m_Queue.state == SPlayQueue::STARTING)
+      {
+        CLog::Log(LOGDEBUG, "CDVDPlayer::Process - successfully opened queued file");
+        m_Queue.state = SPlayQueue::IDLE;
+        m_callback.OnPlayBackStarted();
+      }
     }
 
     // handle eventual seeks due to playspeed
@@ -1128,6 +1151,10 @@ void CDVDPlayer::Process()
 
     if (!pPacket)
     {
+      // if we are caching, start playing it again
+      if (m_caching != CACHESTATE_DONE && !m_bAbortRequest)
+        SetCaching(CACHESTATE_DONE);
+
       // when paused, demuxer could be be returning empty
       if (m_playSpeed == DVD_PLAYSPEED_PAUSE)
         continue;
@@ -1168,6 +1195,43 @@ void CDVDPlayer::Process()
       {
         Sleep(100);
         continue;
+      }
+
+      // ask application for a queued item
+      { CSingleLock lock(m_Queue);
+        if(m_Queue.state == SPlayQueue::IDLE)
+        {
+          CLog::Log(LOGDEBUG, "CDVDPlayer::Process - asking application to queue new file");
+          m_Queue.state = SPlayQueue::WAITING;
+          m_callback.OnQueueNextItem();
+          continue;
+        }
+        if(m_Queue.state == SPlayQueue::QUEUED)
+        {
+          // don't open next file until the last seconds
+          if(m_CurrentVideo.id >= 0 && m_dvdPlayerVideo.GetOutputDelay() > DVD_SEC_TO_TIME(2))
+          {
+            Sleep(100);
+            continue;
+          }
+
+          CLog::Log(LOGDEBUG, "CDVDPlayer::Process - start queued file %s", m_Queue.item.m_strPath.c_str());
+          m_Queue.state = SPlayQueue::STARTING;
+          m_item     = m_Queue.item;
+          m_filename = m_item.m_strPath;
+
+          g_settings.m_currentVideoSettings.m_SubtitleCached = false;
+          m_SelectionStreams.Clear(STREAM_NONE, STREAM_SOURCE_NONE);
+          SAFE_DELETE(m_pSubtitleDemuxer);
+          SAFE_DELETE(m_pDemuxer);
+          SAFE_DELETE(m_pInputStream);
+          continue;
+        }
+        if(m_Queue.state == SPlayQueue::WAITING)
+        {
+          Sleep(100);
+          continue;
+        }
       }
 
       // make sure we tell all players to finish it's data

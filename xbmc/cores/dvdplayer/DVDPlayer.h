@@ -171,6 +171,10 @@ public:
   CDVDPlayer(IPlayerCallback& callback);
   virtual ~CDVDPlayer();
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions &options);
+
+  virtual bool QueueNextFile(const CFileItem &file);
+  virtual void OnNothingToQueueNotify();
+
   virtual bool CloseFile();
   virtual bool IsPlaying() const;
   virtual void Pause();
@@ -341,6 +345,27 @@ protected:
   CFileItem    m_item;
   unsigned int m_iChannelEntryTimeOut;
 
+
+  struct SPlayQueue
+    : CCriticalSection
+  {
+    void Clear()
+    {
+      state = IDLE;
+    }
+
+    enum EQueueState
+    {
+      QUEUED,
+      STARTING,
+      FAILED,
+      WAITING,
+      IDLE,
+    };
+
+    CFileItem   item;
+    EQueueState state;
+  } m_Queue;
 
   CCurrentStream m_CurrentAudio;
   CCurrentStream m_CurrentVideo;
