@@ -76,11 +76,28 @@ RENDER_STEREO_MODE CStereoscopicsManager::GetStereoMode(void)
 void CStereoscopicsManager::SetStereoMode(const RENDER_STEREO_MODE &mode)
 {
   RENDER_STEREO_MODE currentMode = GetStereoMode();
-  if (mode != currentMode && mode >= RENDER_STEREO_MODE_OFF)
+  if (mode != currentMode && mode >= RENDER_STEREO_MODE_OFF && g_Windowing.SupportsStereo(mode))
   {
     m_lastStereoMode = currentMode;
     CSettings::Get().SetInt("videoscreen.stereoscopicmode", mode);
   }
+}
+
+void CStereoscopicsManager::SetStereoMode(const std::string &mode)
+{
+  RENDER_STEREO_MODE stereoMode;
+  if (mode == "off")
+    stereoMode = RENDER_STEREO_MODE_OFF;
+  else if (mode == "2d" || mode == "mono")
+    stereoMode = RENDER_STEREO_MODE_MONO;
+  else if (mode == "sbs")
+    stereoMode = RENDER_STEREO_MODE_SPLIT_VERTICAL;
+  else if (mode == "tab" || mode == "ou" || mode == "over_under")
+    stereoMode = RENDER_STEREO_MODE_SPLIT_HORIZONTAL;
+  else
+    stereoMode = ConvertVideoToGuiStereoMode(mode);
+
+  SetStereoMode( stereoMode );
 }
 
 RENDER_STEREO_MODE CStereoscopicsManager::GetNextSupportedStereoMode(const RENDER_STEREO_MODE &currentMode, int step)
