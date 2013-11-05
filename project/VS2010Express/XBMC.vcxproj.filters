@@ -3080,6 +3080,9 @@
     <ClCompile Include="..\..\xbmc\settings\ISettingControl.cpp">
       <Filter>settings</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\cores\VideoRenderers\OverlayRendererGUI.cpp">
+      <Filter>cores\VideoRenderers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\win32\pch.h">
@@ -6054,6 +6057,9 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\settings\SettingDefinitions.h">
       <Filter>settings</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\cores\VideoRenderers\OverlayRendererGUI.h">
+      <Filter>cores\VideoRenderers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
