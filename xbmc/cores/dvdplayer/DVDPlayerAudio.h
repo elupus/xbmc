@@ -227,7 +227,6 @@ protected:
 
   double m_integral; //integral correction for resampler
   bool   m_prevskipped;
-  double m_maxspeedadjust;
   double m_resampleratio; //resample ratio when using SYNC_RESAMPLE, used for the codec info
 
 
