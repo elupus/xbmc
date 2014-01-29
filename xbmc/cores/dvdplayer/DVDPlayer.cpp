@@ -809,23 +809,24 @@ void CDVDPlayer::OpenDefaultStreams(bool reset)
   if(!valid)
     CloseAudioStream(true);
 
-  // enable  or disable subtitles
-  SetSubtitleVisible(CMediaSettings::Get().GetCurrentVideoSettings().m_SubtitleOn);
-
   // open subtitle stream
   SelectionStream as = m_SelectionStreams.Get(STREAM_AUDIO, GetAudioStream());
   PredicateSubtitleFilter psf(as.language);
-  streams = m_SelectionStreams.RemoveIf(STREAM_SUBTITLE, psf);
   PredicateSubtitlePriority psp(as.language);
-  std::stable_sort(streams.begin(), streams.end(), psp);
   valid   = false;
+  streams = m_SelectionStreams.Get(STREAM_SUBTITLE, psp);
   for(SelectionStreams::iterator it = streams.begin(); it != streams.end() && !valid; ++it)
   {
     if(OpenSubtitleStream(it->id, it->source))
     {
       valid = true;
-      if(it->flags & CDemuxStream::FLAG_FORCED)
-        m_dvdPlayerVideo.EnableSubtitle(true);
+      if(psf(*it))
+        SetSubtitleVisible(false);
+      else if(it->flags & CDemuxStream::FLAG_FORCED)
+        SetSubtitleVisible(true);
+      else
+        SetSubtitleVisible(CMediaSettings::Get().GetCurrentVideoSettings().m_SubtitleOn);
+
     }
   }
   if(!valid)
