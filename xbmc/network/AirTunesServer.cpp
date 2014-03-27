@@ -417,7 +417,7 @@ void CAirTunesServer::StopServer(bool bWait)
    if (ServerInstance == NULL)
      return false;
 
-   return ((CThread*)ServerInstance)->IsRunning();
+   return ServerInstance->m_pRaop != NULL;
  }
 
 CAirTunesServer::CAirTunesServer(int port, bool nonlocal)
