@@ -407,7 +407,11 @@ void CAirTunesServer::StopServer(bool bWait)
    if (ServerInstance == NULL)
      return false;
 
+#if defined(HAVE_LIBSHAIRPLAY)
+   return ServerInstance->m_pRaop != NULL;
+#else
    return ((CThread*)ServerInstance)->IsRunning();
+#endif
  }
 
 CAirTunesServer::CAirTunesServer(int port, bool nonlocal)
