@@ -2933,19 +2933,6 @@ bool CDVDPlayer::OpenAudioStream(int iStream, int source, bool reset)
   if (!pStream || pStream->disabled)
     return false;
 
-  if( m_CurrentAudio.id < 0 &&  m_CurrentVideo.id >= 0 )
-  {
-    // up until now we wheren't playing audio, but we did play video
-    // this will change what is used to sync the dvdclock.
-    // since the new audio data doesn't have to have any relation
-    // to the current video data in the packet que, we have to
-    // wait for it to empty
-
-    // this happens if a new cell has audio data, but previous didn't
-    // and both have video data
-
-    SynchronizePlayers(SYNCSOURCE_AUDIO);
-  }
 
   CDVDStreamInfo hint(*pStream, true);
 
@@ -3301,17 +3288,27 @@ bool CDVDPlayer::CloseTeletextStream(bool bWaitForBuffers)
 
 void CDVDPlayer::UpdateClockMaster()
 {
+  EMasterClock clock;
   if(m_CurrentAudio.id >= 0)
   {
     if(m_CurrentVideo.id >= 0 && g_VideoReferenceClock.GetRefreshRate() > 0)
-      m_clock.SetMaster(MASTER_CLOCK_AUDIO_VIDEOREF);
+      clock = MASTER_CLOCK_AUDIO_VIDEOREF;
     else
-      m_clock.SetMaster(MASTER_CLOCK_AUDIO);
+      clock = MASTER_CLOCK_AUDIO;
   }
   else if(m_CurrentVideo.id >= 0)
-    m_clock.SetMaster(MASTER_CLOCK_VIDEO);
+    clock = MASTER_CLOCK_VIDEO;
   else
-    m_clock.SetMaster(MASTER_CLOCK_NONE);
+    clock = MASTER_CLOCK_NONE;
+
+  if (m_clock.GetMaster() != clock)
+  {
+    /* the new clock should be somewhat in sync with old */
+    if (clock == MASTER_CLOCK_AUDIO)
+      SynchronizePlayers(SYNCSOURCE_AUDIO);
+
+    m_clock.SetMaster(clock);
+  }
 }
 
 void CDVDPlayer::FlushBuffers(bool queued, double pts, bool accurate)
