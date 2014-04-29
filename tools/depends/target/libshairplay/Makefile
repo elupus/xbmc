@@ -26,10 +26,13 @@ ifeq ($(OS),ios)
 endif
 	cd $(PLATFORM); patch -p1 < ../02-fixipv4ipv6race.patch
 	cd $(PLATFORM); patch -p1 < ../03-fixpasswordauthitunes.patch
+
+.configured-$(PLATFORM): $(PLATFORM)
 	cd $(PLATFORM); $(AUTORECONF) -vif
 	cd $(PLATFORM); $(CONFIGURE)
+	touch $@
 
-$(LIBDYLIB): $(PLATFORM)
+$(LIBDYLIB): .configured-$(PLATFORM)
 	$(MAKE) -j 1 -C $(PLATFORM)
 
 .installed-$(PLATFORM): $(LIBDYLIB)
