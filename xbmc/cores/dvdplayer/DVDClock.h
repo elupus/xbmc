@@ -81,11 +81,11 @@ public:
   static double WaitAbsoluteClock(double target);
 
   static CDVDClock* GetMasterClock();
-protected:
   static void   CheckSystemClock();
   static double SystemToAbsolute(int64_t system);
   static int64_t AbsoluteToSystem(double absolute);
   double        SystemToPlaying(int64_t system);
+protected:
 
   CSharedSection m_critSection;
   int64_t m_systemUsed;

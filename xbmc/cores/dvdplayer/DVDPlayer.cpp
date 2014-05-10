@@ -491,6 +491,7 @@ CDVDPlayer::CDVDPlayer(IPlayerCallback& callback)
       m_CurrentVideo(STREAM_VIDEO, DVDPLAYER_VIDEO),
       m_CurrentSubtitle(STREAM_SUBTITLE, DVDPLAYER_SUBTITLE),
       m_CurrentTeletext(STREAM_TELETEXT, DVDPLAYER_TELETEXT),
+      m_CurrentClock(STREAM_CLOCK, DVDPLAYER_CLOCK),
       m_messenger("player"),
       m_dvdPlayerVideo(&m_clock, &m_overlayContainer, m_messenger),
       m_dvdPlayerAudio(&m_clock, m_messenger),
@@ -1298,6 +1299,7 @@ void CDVDPlayer::Process()
     CheckBetterStream(m_CurrentVideo,    pStream);
     CheckBetterStream(m_CurrentSubtitle, pStream);
     CheckBetterStream(m_CurrentTeletext, pStream);
+    CheckBetterStream(m_CurrentClock   , pStream);
 
     // process the packet
     ProcessPacket(pStream, pPacket);
@@ -1348,6 +1350,8 @@ void CDVDPlayer::ProcessPacket(CDemuxStream* pStream, DemuxPacket* pPacket)
         ProcessSubData(pStream, pPacket);
       else if (CheckIsCurrent(m_CurrentTeletext, pStream, pPacket))
         ProcessTeletextData(pStream, pPacket);
+      else if (CheckIsCurrent(m_CurrentClock, pStream, pPacket))
+        ProcessClockData(pStream, pPacket);
       else
       {
         pStream->SetDiscard(AVDISCARD_ALL);
@@ -1472,6 +1476,40 @@ void CDVDPlayer::ProcessTeletextData(CDemuxStream* pStream, DemuxPacket* pPacket
     drop = true;
 
   m_dvdPlayerTeletext.SendMessage(new CDVDMsgDemuxerPacket(pPacket, drop));
+}
+
+void CDVDPlayer::ProcessClockData(CDemuxStream* pStream, DemuxPacket* pPacket)
+{
+  CheckStreamChanges(m_CurrentClock, pStream);
+
+  UpdateTimestamps(m_CurrentClock, pPacket);
+
+  bool drop = false;
+  if (CheckPlayerInit(m_CurrentClock))
+    drop = true;
+
+  if (CheckSceneSkip(m_CurrentClock))
+    drop = true;
+
+  if (drop)
+    return;
+
+  double absolute  = DVD_NOPTS_VALUE;
+  double clock     = DVD_NOPTS_VALUE;
+
+  if (pStream->codec == (AVCodecID)MKBETAG('B','X','A',' '))
+  {
+    uint64_t ntp = *(uint64_t*)pPacket->pData;
+    absolute = CDVDClock::SystemToAbsolute(((double)ntp / (1ull<<32) * CurrentHostFrequency()));
+    clock    = pPacket->pts;
+  }
+
+  if (m_clock.GetMaster() == MASTER_CLOCK_INPUT)
+  {
+    if (absolute != DVD_NOPTS_VALUE
+    &&  clock    != DVD_NOPTS_VALUE)
+      m_clock.Discontinuity(clock, absolute, "CDVDPlayer::ProcessClockData");
+  }
 }
 
 bool CDVDPlayer::GetCachingTimes(double& level, double& delay, double& offset)
@@ -2947,6 +2985,9 @@ bool CDVDPlayer::OpenStream(CCurrentStream& current, int iStream, int source, bo
     case STREAM_TELETEXT:
       res = OpenTeletextStream(hint);
       break;
+    case STREAM_CLOCK:
+      res = OpenClockStream(hint);
+      break;
     default:
       res = false;
       break;
@@ -3110,6 +3151,11 @@ bool CDVDPlayer::OpenTeletextStream(CDVDStreamInfo& hint)
   return true;
 }
 
+bool CDVDPlayer::OpenClockStream(CDVDStreamInfo& hint)
+{
+  return true;
+}
+
 bool CDVDPlayer::CloseStream(CCurrentStream& current, bool bWaitForBuffers)
 {
   if (current.id < 0)
@@ -3132,7 +3178,9 @@ bool CDVDPlayer::CloseStream(CCurrentStream& current, bool bWaitForBuffers)
 void CDVDPlayer::UpdateClockMaster()
 {
   EMasterClock clock;
-  if(m_CurrentAudio.id >= 0)
+  if(m_CurrentClock.id >= 0)
+    clock = MASTER_CLOCK_INPUT;
+  else if(m_CurrentAudio.id >= 0)
   {
     if(m_CurrentVideo.id >= 0 && g_VideoReferenceClock.GetRefreshRate() > 0)
       clock = MASTER_CLOCK_AUDIO_VIDEOREF;
