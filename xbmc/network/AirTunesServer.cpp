@@ -218,6 +218,9 @@ void* CAirTunesServer::AudioOutputFunctions::audio_init(void *cls, int bits, int
   if (ctx->pipe.Write(&header, sizeof(header)) == 0)
     return 0;
 
+  ctx->bytes            = 0;
+  ctx->bytes_per_sample = channels * bits / 8;
+
   ThreadMessage tMsg = { TMSG_MEDIA_STOP };
   CApplicationMessenger::Get().SendMessage(tMsg, true);
 
@@ -245,11 +248,19 @@ void  CAirTunesServer::AudioOutputFunctions::audio_set_volume(void *cls, void *s
 void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *session, const void *buffer, int buflen)
 {
   CSession *ctx=(CSession *)session;
+  Demux_BXA_BlkHeader block;
+  block.timestamp = ctx->bytes / ctx->bytes_per_sample;
+  block.bytes     = buflen;
+  block.type      = BXA_BLOCK_TYPE_PCM;
 
+  if (ctx->pipe.Write(&block, sizeof(block)) == 0)
+    return;
 
   if (ctx->pipe.Write(buffer, buflen) == 0)
     return;
 
+  ctx->bytes += buflen;
+}
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_flush(void *cls, void *session)

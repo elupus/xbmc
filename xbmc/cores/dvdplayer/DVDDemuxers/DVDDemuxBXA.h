@@ -42,6 +42,16 @@ typedef struct
   uint64_t durationMs;
 } __attribute__((__packed__)) Demux_BXA_FmtHeader;
 
+typedef struct
+{
+  uint32_t timestamp;
+  uint32_t bytes;
+  uint8_t  type;
+} __attribute__((__packed__)) Demux_BXA_BlkHeader;
+
+
+#define BXA_BLOCK_TYPE_PCM  0
+
 #ifdef TARGET_WINDOWS
 #pragma pack(pop)
 #endif
@@ -75,8 +85,10 @@ public:
 
 protected:
   friend class CDemuxStreamAudioBXA;
+
+  bool ReadComplete(uint8_t* buf, size_t len);
+
   CDVDInputStream* m_pInput;
-  int64_t m_bytes;
 
   CDemuxStreamAudioBXA *m_stream;
 
