@@ -51,6 +51,20 @@ public:
   static void SetMetadataFromBuffer(const char *buffer, unsigned int size);
   static void SetCoverArtFromBuffer(const char *buffer, unsigned int size);
 
+  struct CSession
+  {
+    CSession()
+      : bytes(0)
+      , bytes_per_sample(0)
+    {}
+    XFILE::CPipeFile  pipe;
+    unsigned int      bytes;
+    unsigned int      bytes_per_sample;
+  };
+
+protected:
+  void Process();
+
 private:
   CAirTunesServer(int port, bool nonlocal);
   ~CAirTunesServer();
@@ -62,7 +76,6 @@ private:
   int m_port;
   static DllLibShairplay *m_pLibShairplay;//the lib
   raop_t *m_pRaop;
-  XFILE::CPipeFile *m_pPipe;
   static CAirTunesServer *ServerInstance;
   static CStdString m_macAddress;
   static CCriticalSection m_metadataLock;
