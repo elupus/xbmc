@@ -25,6 +25,8 @@
       <rule name="mp2" mimetypes="application/octet-stream" filetypes="mp2" player="PAPlayer" />
     </rule>
 
+    <rule name="airplay" mimetypes="audio/x-xbmc-pcm" player="DVDPlayer"/>
+
     <!-- DVDs -->
     <rule name="dvd" dvd="true" player="DVDPlayer" />
     <rule name="dvdimage" dvdimage="true" player="DVDPlayer" />
