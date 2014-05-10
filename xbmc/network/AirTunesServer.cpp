@@ -68,6 +68,21 @@ std::string CAirTunesServer::m_metadata[3];
 CCriticalSection CAirTunesServer::m_metadataLock;
 bool CAirTunesServer::m_streamStarted = false;
 
+namespace {
+
+struct CSession
+{
+  CSession()
+  : bytes(0)
+  , bytes_per_sample(0)
+  {}
+  XFILE::CPipeFile    pipe;
+  unsigned int        bytes;
+  unsigned int        bytes_per_sample;
+};
+
+}
+
 //parse daap metadata - thx to project MythTV
 std::map<std::string, std::string> decodeDMAP(const char *buffer, unsigned int size)
 {
@@ -211,14 +226,12 @@ void CAirTunesServer::AudioOutputFunctions::audio_set_coverart(void *cls, void *
   CAirTunesServer::SetCoverArtFromBuffer((char *)buffer, buflen);
 }
 
-char *session="Kodi-AirTunes";
-
 void* CAirTunesServer::AudioOutputFunctions::audio_init(void *cls, int bits, int channels, int samplerate)
 {
-  XFILE::CPipeFile *pipe=(XFILE::CPipeFile *)cls;
+  CSession *ctx = new CSession();
   const CURL pathToUrl(XFILE::PipesManager::GetInstance().GetUniquePipeName());
-  pipe->OpenForWrite(pathToUrl);
-  pipe->SetOpenThreashold(300);
+  ctx->pipe.OpenForWrite(pathToUrl);
+  ctx->pipe.SetOpenThreashold(300);
 
   Demux_BXA_FmtHeader header;
   strncpy(header.fourcc, "BXA ", 4);
@@ -228,14 +241,14 @@ void* CAirTunesServer::AudioOutputFunctions::audio_init(void *cls, int bits, int
   header.sampleRate = samplerate;
   header.durationMs = 0;
 
-  if (pipe->Write(&header, sizeof(header)) == 0)
+  if (ctx->pipe.Write(&header, sizeof(header)) == 0)
     return 0;
 
   ThreadMessage tMsg = { TMSG_MEDIA_STOP };
   CApplicationMessenger::Get().SendMessage(tMsg, true);
 
   CFileItem item;
-  item.SetPath(pipe->GetName());
+  item.SetPath(ctx->pipe.GetName());
   item.SetMimeType("audio/x-xbmc-pcm");
   m_streamStarted = true;
 
@@ -246,7 +259,7 @@ void* CAirTunesServer::AudioOutputFunctions::audio_init(void *cls, int bits, int
   // in a later call to audio_set_metadata/audio_set_coverart.
   ResetMetadata();
 
-  return session;//session
+  return ctx;
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_set_volume(void *cls, void *session, float volume)
@@ -262,28 +275,25 @@ void  CAirTunesServer::AudioOutputFunctions::audio_set_volume(void *cls, void *s
 
 void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *session, const void *buffer, int buflen)
 {
-  #define NUM_OF_BYTES 64
-  XFILE::CPipeFile *pipe=(XFILE::CPipeFile *)cls;
-  int sentBytes = 0;
-  unsigned char buf[NUM_OF_BYTES];
+  CSession *ctx=(CSession *)session;
 
-  while (sentBytes < buflen)
-  {
-    int n = (buflen - sentBytes < NUM_OF_BYTES ? buflen - sentBytes : NUM_OF_BYTES);
-    memcpy(buf, (char*) buffer + sentBytes, n);
 
-    if (pipe->Write(buf, n) == 0)
-      return;
+  if (ctx->pipe.Write(buffer, buflen) == 0)
+    return;
 
-    sentBytes += n;
-  }
+}
+
+void  CAirTunesServer::AudioOutputFunctions::audio_flush(void *cls, void *session)
+{
+  CSession *ctx=(CSession *)session;
+  ctx->pipe.Flush();
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_destroy(void *cls, void *session)
 {
-  XFILE::CPipeFile *pipe=(XFILE::CPipeFile *)cls;
-  pipe->SetEof();
-  pipe->Close();
+  CSession *ctx=(CSession *)session;
+  ctx->pipe.SetEof();
+  ctx->pipe.Close();
 
   //fix airplay video for ios5 devices
   //on ios5 when airplaying video
@@ -424,7 +434,6 @@ CAirTunesServer::CAirTunesServer(int port, bool nonlocal)
 {
   m_port = port;
   m_pLibShairplay = new DllLibShairplay();
-  m_pPipe         = new XFILE::CPipeFile;  
   CAnnouncementManager::Get().AddAnnouncer(this);
 }
 
@@ -435,7 +444,6 @@ CAirTunesServer::~CAirTunesServer()
     m_pLibShairplay->Unload();
   }
   delete m_pLibShairplay;
-  delete m_pPipe;
   CAnnouncementManager::Get().RemoveAnnouncer(this);
 }
 
@@ -449,7 +457,7 @@ bool CAirTunesServer::Initialize(const std::string &password)
   {
 
     raop_callbacks_t ao = {};
-    ao.cls                  = m_pPipe;
+    ao.cls                  = this;
     ao.audio_init           = AudioOutputFunctions::audio_init;
     ao.audio_set_volume     = AudioOutputFunctions::audio_set_volume;
     ao.audio_set_metadata   = AudioOutputFunctions::audio_set_metadata;

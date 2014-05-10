@@ -62,7 +62,6 @@ private:
   int m_port;
   static DllLibShairplay *m_pLibShairplay;//the lib
   raop_t *m_pRaop;
-  XFILE::CPipeFile *m_pPipe;
   static CAirTunesServer *ServerInstance;
   static std::string m_macAddress;
   static CCriticalSection m_metadataLock;
