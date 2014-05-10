@@ -29,7 +29,7 @@ endif
 
 .configured-$(PLATFORM): $(PLATFORM)
 	cd $(PLATFORM); $(AUTORECONF) -vif
-	cd $(PLATFORM); $(CONFIGURE)
+	cd $(PLATFORM); CFLAGS="-g -O0" $(CONFIGURE)
 	touch $@
 
 $(LIBDYLIB): .configured-$(PLATFORM)
