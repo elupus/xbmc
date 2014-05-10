@@ -49,8 +49,8 @@ public:
 CDVDDemuxBXA::CDVDDemuxBXA() : CDVDDemux()
 {
   m_pInput = NULL;
-  m_stream = NULL;
   memset(&m_header, 0x0, sizeof(Demux_BXA_FmtHeader));
+  memset(m_streams, 0x0, sizeof(m_streams));
 }
 
 CDVDDemuxBXA::~CDVDDemuxBXA()
@@ -71,7 +71,11 @@ bool CDVDDemuxBXA::Open(CDVDInputStream* pInput)
     return false;
 
   // file valid?
-  if (strncmp(m_header.fourcc, "BXA ", 4) != 0 || m_header.type != BXA_PACKET_TYPE_FMT_DEMUX)
+  if (strncmp(m_header.fourcc, "BXA ", 4) != 0
+  || m_header.type != BXA_PACKET_TYPE_FMT_DEMUX
+  || m_header.sampleRate     == 0
+  || m_header.channels       == 0
+  || m_header.bitsPerSample  == 0)
   {
     pInput->Seek(0, SEEK_SET);
     return false;
@@ -79,26 +83,36 @@ bool CDVDDemuxBXA::Open(CDVDInputStream* pInput)
 
   m_pInput = pInput;
 
-  m_stream = new CDemuxStreamAudioBXA(this, "BXA");
+  CDemuxStreamAudioBXA* audio = new CDemuxStreamAudioBXA(this, "BXA");
 
-  if(!m_stream)
+  if(!audio)
     return false;
 
-  m_stream->iSampleRate     = m_header.sampleRate;
-  m_stream->iBitsPerSample  = m_header.bitsPerSample;
-  m_stream->iBitRate        = m_header.sampleRate * m_header.channels * m_header.bitsPerSample;
-  m_stream->iChannels       = m_header.channels;
-  m_stream->type            = STREAM_AUDIO;
-  m_stream->codec           = AV_CODEC_ID_PCM_S16LE;
+  audio->iSampleRate     = m_header.sampleRate;
+  audio->iBitsPerSample  = m_header.bitsPerSample;
+  audio->iBitRate        = m_header.sampleRate * m_header.channels * m_header.bitsPerSample;
+  audio->iChannels       = m_header.channels;
+  audio->type            = STREAM_AUDIO;
+  audio->codec           = AV_CODEC_ID_PCM_S16LE;
+  audio->iId             = BXA_BLOCK_TYPE_PCM;
+  m_streams[BXA_BLOCK_TYPE_PCM] = audio;
+
+  CDemuxStream* data = new CDemuxStream();
+  data->iId   = BXA_BLOCK_TYPE_SYNC;
+  data->type  = STREAM_CLOCK;
+  data->codec = (AVCodecID)MKBETAG('B','X','A',' ');
+  m_streams[BXA_BLOCK_TYPE_SYNC] = data;
 
   return true;
 }
 
 void CDVDDemuxBXA::Dispose()
 {
-  delete m_stream;
-  m_stream = NULL;
-
+  for(unsigned i = 0; i < (sizeof(m_streams) / sizeof(m_streams[0])); i++)
+  {
+    delete m_streams[i];
+    m_streams[0] = NULL;
+  }
   m_pInput = NULL;
 
   memset(&m_header, 0x0, sizeof(Demux_BXA_FmtHeader));
@@ -163,15 +177,16 @@ DemuxPacket* CDVDDemuxBXA::Read()
 
 CDemuxStream* CDVDDemuxBXA::GetStream(int iStreamId)
 {
-  if(iStreamId != 0)
+  if(iStreamId >= GetNrOfStreams()
+  && iStreamId <  0)
     return NULL;
 
-  return m_stream;
+  return m_streams[iStreamId];
 }
 
 int CDVDDemuxBXA::GetNrOfStreams()
 {
-  return (m_stream == NULL ? 0 : 1);
+  return (sizeof(m_streams) / sizeof(m_streams[0]));
 }
 
 std::string CDVDDemuxBXA::GetFileName()
@@ -184,6 +199,9 @@ std::string CDVDDemuxBXA::GetFileName()
 
 void CDVDDemuxBXA::GetStreamCodecName(int iStreamId, CStdString &strName)
 {
-  if (m_stream && iStreamId == 0)
-    strName = "BXA";
+
+  if (iStreamId == 0)
+    strName = "BXA (pcm)";
+  else if (iStreamId == 1)
+    strName = "BXA (sync)";
 }

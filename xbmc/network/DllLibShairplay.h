@@ -24,6 +24,17 @@
 
 #include <shairplay/raop.h>
 
+#ifndef RAOP_VERSION_MAKE
+#define RAOP_VERSION_MAKE(major, minor, micro) ( ((major) << 16) \
+                                               | ((minor) <<  8) \
+                                               | ((micro) <<  0) )
+#endif
+
+#ifndef RAOP_VERSION_INT
+#define RAOP_VERSION_INT RAOP_VERSION_MAKE(0,0,0)
+#endif
+
+
 struct raop_s;
 
 class DllLibShairplayInterface

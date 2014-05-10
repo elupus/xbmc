@@ -51,6 +51,7 @@ typedef struct
 
 
 #define BXA_BLOCK_TYPE_PCM  0
+#define BXA_BLOCK_TYPE_SYNC 1
 
 #ifdef TARGET_WINDOWS
 #pragma pack(pop)
@@ -90,7 +91,7 @@ protected:
 
   CDVDInputStream* m_pInput;
 
-  CDemuxStreamAudioBXA *m_stream;
+  CDemuxStream         *m_streams[2];
 
   Demux_BXA_FmtHeader m_header;
 };

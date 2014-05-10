@@ -53,6 +53,7 @@
 #include "utils/EndianSwap.h"
 #include "URL.h"
 #include "interfaces/AnnouncementManager.h"
+#include "utils/TimeUtils.h"
 
 #include <map>
 #include <string>
@@ -245,11 +246,19 @@ void  CAirTunesServer::AudioOutputFunctions::audio_set_volume(void *cls, void *s
     g_application.SetVolume(volPercent, false);//non-percent volume 0.0-1.0
 }
 
+#if RAOP_VERSION_INT >= RAOP_VERSION_MAKE(0,2,0)
+void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *session, const void *buffer, int buflen, unsigned int timestamp)
+#else
 void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *session, const void *buffer, int buflen)
+#endif
 {
   CSession *ctx=(CSession *)session;
   Demux_BXA_BlkHeader block;
+#if RAOP_VERSION_INT >= RAOP_VERSION_MAKE(0,2,0)
+  block.timestamp = timestamp;
+#else
   block.timestamp = ctx->bytes / ctx->bytes_per_sample;
+#endif
   block.bytes     = buflen;
   block.type      = BXA_BLOCK_TYPE_PCM;
 
@@ -261,6 +270,20 @@ void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *sess
 
   ctx->bytes += buflen;
 }
+
+void  CAirTunesServer::AudioOutputFunctions::audio_sync(void *cls, void *session, unsigned long long clock, unsigned long long dispersion, unsigned int timestamp)
+{
+  CSession *ctx=(CSession *)session;
+  Demux_BXA_BlkHeader block;
+  block.timestamp = timestamp;
+  block.bytes     = sizeof(clock);
+  block.type      = BXA_BLOCK_TYPE_SYNC;
+
+  if (ctx->pipe.Write(&block, sizeof(block)) == 0)
+    return;
+
+  if (ctx->pipe.Write(&clock, sizeof(clock)) == 0)
+    return;
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_flush(void *cls, void *session)
@@ -291,6 +314,11 @@ void  CAirTunesServer::AudioOutputFunctions::audio_destroy(void *cls, void *sess
   }
   
   m_streamStarted = false;
+}
+
+void  CAirTunesServer::AudioOutputFunctions::audio_get_clock(void *cls, unsigned long long *clock)
+{
+  *clock  = (uint64_t)((double)CurrentHostCounter() / CurrentHostFrequency() * ((uint64_t)1u<<32));
 }
 
 void shairplay_log(void *cls, int level, const char *msg)
@@ -449,6 +477,11 @@ bool CAirTunesServer::Initialize(const CStdString &password)
     ao.audio_process        = AudioOutputFunctions::audio_process;
     ao.audio_flush          = AudioOutputFunctions::audio_flush;
     ao.audio_destroy        = AudioOutputFunctions::audio_destroy;
+#if RAOP_VERSION_INT >= RAOP_VERSION_MAKE(0,2,0)
+    ao.audio_get_clock      = AudioOutputFunctions::audio_get_clock;
+    ao.audio_sync           = AudioOutputFunctions::audio_sync;
+#endif
+
     m_pLibShairplay->EnableDelayedUnload(false);
     m_pRaop = m_pLibShairplay->raop_init(1, &ao, RSA_KEY);//1 - we handle one client at a time max
     ret = m_pRaop != NULL;    
