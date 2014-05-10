@@ -50,7 +50,6 @@ CDVDDemuxBXA::CDVDDemuxBXA() : CDVDDemux()
 {
   m_pInput = NULL;
   m_stream = NULL;
-  m_bytes = 0;
   memset(&m_header, 0x0, sizeof(Demux_BXA_FmtHeader));
 }
 
@@ -101,7 +100,6 @@ void CDVDDemuxBXA::Dispose()
   m_stream = NULL;
 
   m_pInput = NULL;
-  m_bytes = 0;
 
   memset(&m_header, 0x0, sizeof(Demux_BXA_FmtHeader));
 }
@@ -123,43 +121,41 @@ void CDVDDemuxBXA::Flush()
 {
 }
 
-#define BXA_READ_SIZE 4096
+bool CDVDDemuxBXA::ReadComplete(uint8_t* buf, size_t len)
+{
+  while(len > 0)
+  {
+    int res = m_pInput->Read(buf, len);
+    if (res <= 0)
+      return false;
+    len -= res;
+    buf += res;
+  }
+  return true;
+}
+
 DemuxPacket* CDVDDemuxBXA::Read()
 {
   if(!m_pInput)
     return NULL;
 
-  DemuxPacket* pPacket = CDVDDemuxUtils::AllocateDemuxPacket(BXA_READ_SIZE);
-
-  if (!pPacket)
-  {
-    if (m_pInput)
-      m_pInput->Close();
+  Demux_BXA_BlkHeader block;
+  if (!ReadComplete((uint8_t*)&block, sizeof(block)))
     return NULL;
-  }
 
-  pPacket->iSize = m_pInput->Read(pPacket->pData, BXA_READ_SIZE);
-  pPacket->iStreamId = 0;
+  DemuxPacket* pPacket = CDVDDemuxUtils::AllocateDemuxPacket(block.bytes);
+  if (!pPacket)
+    return NULL;
 
-  if(pPacket->iSize < 1)
+  pPacket->iSize     = block.bytes;
+  pPacket->iStreamId = block.type;
+  pPacket->dts       = (double)block.timestamp * DVD_TIME_BASE / m_header.sampleRate;
+  pPacket->pts       = pPacket->dts;
+
+  if (!ReadComplete(pPacket->pData, block.bytes))
   {
-    delete pPacket;
-    pPacket = NULL;
-  }
-  else
-  {
-    int n = (m_header.channels * m_header.bitsPerSample * m_header.sampleRate)>>3;
-    if (n > 0)
-    {
-      m_bytes += pPacket->iSize;
-      pPacket->dts = (double)m_bytes * DVD_TIME_BASE / n;
-      pPacket->pts = pPacket->dts;
-    }
-    else
-    {
-      pPacket->dts = DVD_NOPTS_VALUE;
-      pPacket->pts = DVD_NOPTS_VALUE;
-    }
+    CDVDDemuxUtils::FreeDemuxPacket(pPacket);
+    return NULL;
   }
 
   return pPacket;
