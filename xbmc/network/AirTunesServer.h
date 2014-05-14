@@ -62,9 +62,6 @@ public:
     unsigned int      bytes_per_sample;
   };
 
-protected:
-  void Process();
-
 private:
   CAirTunesServer(int port, bool nonlocal);
   ~CAirTunesServer();
