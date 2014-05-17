@@ -60,8 +60,6 @@ CDVDDemuxBXA::~CDVDDemuxBXA()
 
 bool CDVDDemuxBXA::Open(CDVDInputStream* pInput)
 {
-  Abort();
-
   Dispose();
 
   if(!pInput || !pInput->IsStreamType(DVDSTREAM_TYPE_FILE))
