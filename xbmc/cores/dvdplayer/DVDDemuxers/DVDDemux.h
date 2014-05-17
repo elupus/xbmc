@@ -52,7 +52,8 @@ enum StreamType
   STREAM_VIDEO,   // video stream
   STREAM_DATA,    // data stream
   STREAM_SUBTITLE,// subtitle stream
-  STREAM_TELETEXT // Teletext data stream
+  STREAM_TELETEXT,// Teletext data stream
+  STREAM_CLOCK,   // clock stream
 };
 
 enum StreamSource {

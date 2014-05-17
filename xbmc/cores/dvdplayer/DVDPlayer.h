@@ -196,6 +196,7 @@ public:
 #define DVDPLAYER_VIDEO    2
 #define DVDPLAYER_SUBTITLE 3
 #define DVDPLAYER_TELETEXT 4
+#define DVDPLAYER_CLOCK    5
 
 class CDVDPlayer : public IPlayer, public CThread, public IDVDPlayer
 {
@@ -306,6 +307,7 @@ protected:
   bool OpenVideoStream(CDVDStreamInfo& hint, bool reset = true);
   bool OpenSubtitleStream(CDVDStreamInfo& hint);
   bool OpenTeletextStream(CDVDStreamInfo& hint);
+  bool OpenClockStream(CDVDStreamInfo& hint);
 
   /** \brief Switches forced subtitles to forced subtitles matching the language of the current audio track.
   *          If these are not available, subtitles are disabled.
@@ -320,6 +322,7 @@ protected:
   void ProcessVideoData(CDemuxStream* pStream, DemuxPacket* pPacket);
   void ProcessSubData(CDemuxStream* pStream, DemuxPacket* pPacket);
   void ProcessTeletextData(CDemuxStream* pStream, DemuxPacket* pPacket);
+  void ProcessClockData(CDemuxStream* pStream, DemuxPacket* pPacket);
 
   bool ShowPVRChannelInfo();
 
@@ -387,6 +390,7 @@ protected:
   CCurrentStream m_CurrentVideo;
   CCurrentStream m_CurrentSubtitle;
   CCurrentStream m_CurrentTeletext;
+  CCurrentStream m_CurrentClock;
 
   CSelectionStreams m_SelectionStreams;
 
