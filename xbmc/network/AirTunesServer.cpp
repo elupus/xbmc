@@ -79,6 +79,23 @@ struct CSession
   XFILE::CPipeFile    pipe;
   unsigned int        bytes;
   unsigned int        bytes_per_sample;
+  Demux_BXA_FmtHeader header;
+  CFileItem           item;
+
+  bool OpenPipe()
+  {
+    const CURL pathToUrl(XFILE::PipesManager::GetInstance().GetUniquePipeName());
+    pipe.SetEof();
+    pipe.Close();
+    pipe.OpenForWrite(pathToUrl);
+    pipe.SetOpenThreashold(300);
+    if (pipe.Write(&header, sizeof(header)) == 0)
+      return false;
+
+    item.SetPath(pipe.GetName());
+    item.SetMimeType("audio/x-xbmc-pcm");
+    return true;
+  }
 };
 
 }
@@ -229,33 +246,23 @@ void CAirTunesServer::AudioOutputFunctions::audio_set_coverart(void *cls, void *
 void* CAirTunesServer::AudioOutputFunctions::audio_init(void *cls, int bits, int channels, int samplerate)
 {
   CSession *ctx = new CSession();
-  const CURL pathToUrl(XFILE::PipesManager::GetInstance().GetUniquePipeName());
-  ctx->pipe.OpenForWrite(pathToUrl);
-  ctx->pipe.SetOpenThreashold(300);
 
-  Demux_BXA_FmtHeader header;
-  strncpy(header.fourcc, "BXA ", 4);
-  header.type = BXA_PACKET_TYPE_FMT_DEMUX;
-  header.bitsPerSample = bits;
-  header.channels = channels;
-  header.sampleRate = samplerate;
-  header.durationMs = 0;
-
-  if (ctx->pipe.Write(&header, sizeof(header)) == 0)
-    return 0;
+  strncpy(ctx->header.fourcc, "BXA ", 4);
+  ctx->header.type          = BXA_PACKET_TYPE_FMT_DEMUX;
+  ctx->header.bitsPerSample = bits;
+  ctx->header.channels      = channels;
+  ctx->header.sampleRate    = samplerate;
+  ctx->header.durationMs    = 0;
 
   ctx->bytes            = 0;
   ctx->bytes_per_sample = channels * bits / 8;
 
-  ThreadMessage tMsg = { TMSG_MEDIA_STOP };
-  CApplicationMessenger::Get().SendMessage(tMsg, true);
+  if (!ctx->OpenPipe())
+    return NULL;
 
-  CFileItem item;
-  item.SetPath(ctx->pipe.GetName());
-  item.SetMimeType("audio/x-xbmc-pcm");
   m_streamStarted = true;
 
-  CApplicationMessenger::Get().PlayFile(item);
+  CApplicationMessenger::Get().PlayFile(ctx->item);
 
   // Not all airplay streams will provide metadata (e.g. if using mirroring,
   // no metadata will be sent).  If there *is* metadata, it will be received
@@ -297,7 +304,9 @@ void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *sess
 void  CAirTunesServer::AudioOutputFunctions::audio_flush(void *cls, void *session)
 {
   CSession *ctx=(CSession *)session;
-  ctx->pipe.Flush();
+
+  ctx->OpenPipe();
+  CApplicationMessenger::Get().PlayFile(ctx->item);
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_destroy(void *cls, void *session)
