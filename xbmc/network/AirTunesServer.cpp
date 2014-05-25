@@ -76,12 +76,17 @@ struct CSession
   CSession()
   : bytes(0)
   , bytes_per_sample(0)
+  , silence(0)
+  , latency(0)
   {}
   XFILE::CPipeFile    pipe;
   unsigned int        bytes;
   unsigned int        bytes_per_sample;
   Demux_BXA_FmtHeader header;
   CFileItem           item;
+
+  unsigned int        silence;
+  unsigned int        latency;
 
   bool OpenPipe()
   {
@@ -257,6 +262,8 @@ void* CAirTunesServer::AudioOutputFunctions::audio_init(void *cls, int bits, int
 
   ctx->bytes            = 0;
   ctx->bytes_per_sample = channels * bits / 8;
+  ctx->latency          = ctx->header.sampleRate * 2;
+  ctx->silence          = ctx->silence;
 
   if (!ctx->OpenPipe())
     return NULL;
@@ -294,6 +301,21 @@ void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *sess
 {
   CSession *ctx=(CSession *)session;
   Demux_BXA_BlkHeader block;
+
+  if(ctx->silence)
+  {
+    unsigned start;
+    int      silencelen = ctx->silence * ctx->bytes_per_sample;
+    void*    silence    = calloc(silencelen, 1);
+    if(timestamp > ctx->silence)
+      start = timestamp - ctx->silence;
+    else
+      start = 0;
+    ctx->silence = 0;
+    audio_process(cls, session, silence, silencelen, start);
+    free(silence);
+  }
+
   block.timestamp = timestamp;
   block.bytes     = buflen;
   block.type      = BXA_BLOCK_TYPE_PCM;
@@ -315,6 +337,8 @@ void  CAirTunesServer::AudioOutputFunctions::audio_sync(void *cls, void *session
   block.bytes     = sizeof(clock);
   block.type      = BXA_BLOCK_TYPE_SYNC;
 
+  ctx->latency = latency;
+
   if (ctx->pipe.Write(&block, sizeof(block)) == 0)
     return;
 
@@ -330,6 +354,10 @@ void  CAirTunesServer::AudioOutputFunctions::audio_flush(void *cls, void *sessio
   CSession *ctx=(CSession *)session;
 
   ctx->OpenPipe();
+
+  // prefix with silence
+  ctx->silence = ctx->latency;
+
   CApplicationMessenger::Get().PlayFile(ctx->item);
 }
 
