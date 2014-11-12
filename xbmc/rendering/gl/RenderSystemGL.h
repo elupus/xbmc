@@ -28,6 +28,7 @@
 #include "system.h"
 #include "system_gl.h"
 #include "rendering/RenderSystem.h"
+#include "guilib/MatrixGL.h"
 
 class CRenderSystemGL : public CRenderSystemBase
 {
@@ -91,8 +92,6 @@ protected:
   int        m_glslMajor;
   int        m_glslMinor;
   
-  GLdouble   m_view[16];
-  GLdouble   m_projection[16];
   GLint      m_viewPort[4];
 };
 
