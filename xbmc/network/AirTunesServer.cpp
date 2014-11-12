@@ -52,6 +52,7 @@
 #include "utils/EndianSwap.h"
 #include "URL.h"
 #include "interfaces/AnnouncementManager.h"
+#include "utils/TimeUtils.h"
 
 #include <map>
 #include <string>
@@ -283,11 +284,17 @@ void  CAirTunesServer::AudioOutputFunctions::audio_set_volume(void *cls, void *s
     g_application.SetVolume(volPercent, false);//non-percent volume 0.0-1.0
 }
 
-void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *session, const void *buffer, int buflen)
+void  CAirTunesServer::AudioOutputFunctions::audio_process_v0(void *cls, void *session, const void *buffer, int buflen)
+{
+  CSession *ctx=(CSession *)session;
+  audio_process(cls, session, buffer, buflen, ctx->bytes / ctx->bytes_per_sample);
+}
+
+void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *session, const void *buffer, int buflen, unsigned int timestamp)
 {
   CSession *ctx=(CSession *)session;
   Demux_BXA_BlkHeader block;
-  block.timestamp = ctx->bytes / ctx->bytes_per_sample;
+  block.timestamp = timestamp;
   block.bytes     = buflen;
   block.type      = BXA_BLOCK_TYPE_PCM;
 
@@ -299,6 +306,23 @@ void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *sess
 
   ctx->bytes += buflen;
 }
+
+void  CAirTunesServer::AudioOutputFunctions::audio_sync(void *cls, void *session, unsigned long long clock, unsigned long long dispersion, unsigned int timestamp, unsigned int latency)
+{
+  CSession *ctx=(CSession *)session;
+  Demux_BXA_BlkHeader block;
+  block.timestamp = timestamp;
+  block.bytes     = sizeof(clock);
+  block.type      = BXA_BLOCK_TYPE_SYNC;
+
+  if (ctx->pipe.Write(&block, sizeof(block)) == 0)
+    return;
+
+  // convert into our normal clock ticks.
+  int64_t ticks = (int64_t)((double)clock / (1ull<<32) * CurrentHostFrequency());
+
+  if (ctx->pipe.Write(&ticks, sizeof(ticks)) == 0)
+    return;
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_flush(void *cls, void *session)
@@ -331,6 +355,11 @@ void  CAirTunesServer::AudioOutputFunctions::audio_destroy(void *cls, void *sess
   }
   
   m_streamStarted = false;
+}
+
+void  CAirTunesServer::AudioOutputFunctions::audio_get_clock(void *cls, unsigned long long *clock)
+{
+  *clock  = (uint64_t)((double)CurrentHostCounter() / CurrentHostFrequency() * ((uint64_t)1u<<32));
 }
 
 void shairplay_log(void *cls, int level, const char *msg)
@@ -483,8 +512,15 @@ bool CAirTunesServer::Initialize(const std::string &password)
     ao.audio_set_metadata   = AudioOutputFunctions::audio_set_metadata;
     ao.audio_set_coverart   = AudioOutputFunctions::audio_set_coverart;
     ao.audio_flush          = AudioOutputFunctions::audio_flush;
-    ao.audio_process        = AudioOutputFunctions::audio_process;
     ao.audio_destroy        = AudioOutputFunctions::audio_destroy;
+#if RAOP_VERSION_INT >= RAOP_VERSION_MAKE(0,2,0)
+    ao.audio_process        = AudioOutputFunctions::audio_process;
+    ao.audio_get_clock      = AudioOutputFunctions::audio_get_clock;
+    ao.audio_sync           = AudioOutputFunctions::audio_sync;
+#else
+    ao.audio_process        = AudioOutputFunctions::audio_process_v0;
+#endif
+
     m_pLibShairplay->EnableDelayedUnload(false);
     m_pRaop = m_pLibShairplay->raop_init(1, &ao, RSA_KEY);//1 - we handle one client at a time max
     ret = m_pRaop != NULL;    

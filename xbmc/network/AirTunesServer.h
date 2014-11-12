@@ -75,8 +75,12 @@ private:
       static void  audio_set_volume(void *cls, void *session, float volume);
 	    static void  audio_set_metadata(void *cls, void *session, const void *buffer, int buflen);
 	    static void  audio_set_coverart(void *cls, void *session, const void *buffer, int buflen);
-      static void  audio_process(void *cls, void *session, const void *buffer, int buflen);
+      static void  audio_process(void *cls, void *session, const void *buffer, int buflen, unsigned int timestamp);
+      static void  audio_process_v0(void *cls, void *session, const void *buffer, int buflen);
+      static void  audio_flush(void *cls, void *session);
       static void  audio_destroy(void *cls, void *session);
+      static void  audio_get_clock(void *cls, unsigned long long *clock);
+      static void  audio_sync(void *cls, void *session, unsigned long long clock, unsigned long long dispersion, unsigned int timestamp, unsigned int latency);
     };
 };
 
