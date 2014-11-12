@@ -189,6 +189,7 @@
 		43348AAF1077486D00F859CF /* PlayerSelectionRule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 43348AAA1077486D00F859CF /* PlayerSelectionRule.cpp */; };
 		43352CEE1071634600706B8A /* libsquish.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 43352CED1071634600706B8A /* libsquish.a */; };
 		551C3A45175A12010051AAAD /* VDA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 551C3A43175A12010051AAAD /* VDA.cpp */; };
+		55241DAF1969E14D0085DA9C /* MatrixGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 55241DAE1969E14D0085DA9C /* MatrixGL.cpp */; };
 		552840CC1626163B00ED1333 /* UPnPPlayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 552840CA1626163B00ED1333 /* UPnPPlayer.cpp */; settings = {COMPILER_FLAGS = "-I$SRCROOT/lib/libUPnP -I$SRCROOT/lib/libUPnP/Neptune/Source/Core -I$SRCROOT/lib/libUPnP/Platinum/Source/Core -I$SRCROOT/lib/libUPnP/Platinum/Source/Platinum  -I$SRCROOT/lib/libUPnP/Platinum/Source/Extras -I$SRCROOT/lib/libUPnP/Platinum/Source/Devices/MediaServer -I$SRCROOT/lib/libUPnP/Platinum/Source/Devices/MediaConnect -I$SRCROOT/lib/libUPnP/Platinum/Source/Devices/MediaRenderer"; }; };
 		552A226915F7E14B0015C0D0 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 552A226815F7E14B0015C0D0 /* main.cpp */; };
 		5558ED10176396CD00118C35 /* StereoscopicsManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5558ED0E176396CD00118C35 /* StereoscopicsManager.cpp */; };
@@ -4080,6 +4081,8 @@
 		43FAC87112D6349400F67914 /* IStorageProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IStorageProvider.h; sourceTree = "<group>"; };
 		551C3A43175A12010051AAAD /* VDA.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VDA.cpp; sourceTree = "<group>"; };
 		551C3A44175A12010051AAAD /* VDA.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VDA.h; sourceTree = "<group>"; };
+		55241DAD1969DBA30085DA9C /* MatrixGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixGL.h; sourceTree = "<group>"; };
+		55241DAE1969E14D0085DA9C /* MatrixGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MatrixGL.cpp; sourceTree = "<group>"; };
 		552840CA1626163B00ED1333 /* UPnPPlayer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UPnPPlayer.cpp; sourceTree = "<group>"; };
 		552840CB1626163B00ED1333 /* UPnPPlayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = UPnPPlayer.h; sourceTree = "<group>"; };
 		552A226815F7E14B0015C0D0 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = main/main.cpp; sourceTree = "<group>"; };
@@ -6670,6 +6673,8 @@
 				18B7C7521294222E009E7A26 /* XBTF.h */,
 				18B7C7A81294222E009E7A26 /* XBTFReader.cpp */,
 				18B7C7531294222E009E7A26 /* XBTFReader.h */,
+				55241DAD1969DBA30085DA9C /* MatrixGL.h */,
+				55241DAE1969E14D0085DA9C /* MatrixGL.cpp */,
 			);
 			path = guilib;
 			sourceTree = "<group>";
@@ -10717,6 +10722,7 @@
 				E38E1F8E0D25F9FD00618676 /* DVDVideoCodecLibMpeg2.cpp in Sources */,
 				E38E1F8F0D25F9FD00618676 /* DVDVideoPPFFmpeg.cpp in Sources */,
 				E38E1F910D25F9FD00618676 /* DVDDemux.cpp in Sources */,
+				55241DAF1969E14D0085DA9C /* MatrixGL.cpp in Sources */,
 				E38E1F930D25F9FD00618676 /* DVDDemuxShoutcast.cpp in Sources */,
 				E38E1F940D25F9FD00618676 /* DVDDemuxUtils.cpp in Sources */,
 				E38E1F970D25F9FD00618676 /* DVDDemuxSPU.cpp in Sources */,

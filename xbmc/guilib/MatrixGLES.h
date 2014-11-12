@@ -21,6 +21,8 @@
 
 #include <vector>
 #include <string.h>
+#include "MatrixGL.h"
+#include "utils/Log.h"
 
 enum EMATRIXMODE
 {
@@ -29,6 +31,8 @@ enum EMATRIXMODE
   MM_TEXTURE,
   MM_MATRIXSIZE  // Must be last! used for size of matrices
 };
+
+#define MM_MODE_WITHIN_RANGE(m)       ((m >= 0) && (m < (int)MM_MATRIXSIZE))
 
 class CMatrixGLES
 {
@@ -41,38 +45,76 @@ public:
   void MatrixMode(EMATRIXMODE mode);
   void PushMatrix();
   void PopMatrix();
-  void LoadIdentity();
-  void Ortho(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f);
-  void Ortho2D(GLfloat l, GLfloat r, GLfloat b, GLfloat t);
-  void Frustum(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f);
-  void Translatef(GLfloat x, GLfloat y, GLfloat z);
-  void Scalef(GLfloat x, GLfloat y, GLfloat z);
-  void Rotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z);
-  void MultMatrixf(const GLfloat *matrix);
-  void LookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx, GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy, GLfloat upz);
-  void PrintMatrix(void);
+
+  void LoadIdentity()
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().LoadIdentity();
+  }
+
+  void Ortho(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().Ortho(l, r, b, t, n, f);
+  }
+
+  void Ortho2D(GLfloat l, GLfloat r, GLfloat b, GLfloat t)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().Ortho2D(l, r, b, t);
+  }
+
+  void Frustum(GLfloat l, GLfloat r, GLfloat b, GLfloat t, GLfloat n, GLfloat f)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().Frustum(l, r, b, t, n, f);
+  }
+
+  void Translatef(GLfloat x, GLfloat y, GLfloat z)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().Translatef(x, y, z);
+  }
+
+  void Scalef(GLfloat x, GLfloat y, GLfloat z)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().Scalef(x, y, z);
+  }
+
+  void Rotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().Rotatef(angle, x, y, z);
+  }
+
+  void MultMatrixf(const GLfloat *matrix)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().MultMatrixf(matrix);
+  }
+
+  void LookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx, GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy, GLfloat upz)
+  {
+    if (MM_MODE_WITHIN_RANGE(m_matrixMode))
+      m_matrices[m_matrixMode].back().LookAt(eyex, eyey, eyez, centerx, centery, centerz, upx, upy, upz);
+  }
+
+  void PrintMatrix(void)
+  {
+    for (unsigned int i=0; i < MM_MATRIXSIZE; i++)
+    {
+      CLog::Log(LOGDEBUG, "MatrixGLES - Matrix:%d", i);
+      m_matrices[i].back().PrintMatrix();
+    }
+  }
+
   static bool Project(GLfloat objx, GLfloat objy, GLfloat objz, const GLfloat modelMatrix[16], const GLfloat projMatrix[16], const GLint viewport[4], GLfloat* winx, GLfloat* winy, GLfloat* winz);
 
 protected:
 
-  struct MatrixWrapper 
-  {
-    MatrixWrapper(){ memset(&m_values, 0, sizeof(m_values)); };
-    MatrixWrapper( const float values[16]) { memcpy(m_values,values,sizeof(m_values)); }
-    MatrixWrapper( const MatrixWrapper &rhs ) { memcpy(m_values, rhs.m_values, sizeof(m_values)); }
-    MatrixWrapper &operator=( const MatrixWrapper &rhs ) { memcpy(m_values, rhs.m_values, sizeof(m_values)); return *this;}
-    operator float*() { return m_values; }
-    operator const float*() const { return m_values; }
-
-    float m_values[16];
-  };
-
-  std::vector<struct MatrixWrapper> m_matrices[(int)MM_MATRIXSIZE];
-  GLfloat *m_pMatrix;
+  std::vector<CMatrixGL> m_matrices[(int)MM_MATRIXSIZE];
   EMATRIXMODE m_matrixMode;
-#if defined(__ARM_NEON__)
-  bool m_has_neon;
-#endif
 };
 
 extern CMatrixGLES g_matrices;
