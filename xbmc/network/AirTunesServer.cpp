@@ -482,6 +482,7 @@ bool CAirTunesServer::Initialize(const std::string &password)
     ao.audio_set_volume     = AudioOutputFunctions::audio_set_volume;
     ao.audio_set_metadata   = AudioOutputFunctions::audio_set_metadata;
     ao.audio_set_coverart   = AudioOutputFunctions::audio_set_coverart;
+    ao.audio_flush          = AudioOutputFunctions::audio_flush;
     ao.audio_process        = AudioOutputFunctions::audio_process;
     ao.audio_destroy        = AudioOutputFunctions::audio_destroy;
     m_pLibShairplay->EnableDelayedUnload(false);
