@@ -522,16 +522,20 @@ bool CDecoder::Open(AVCodecContext* avctx, const enum PixelFormat fmt, unsigned 
   switch (avctx->codec_id)
   {
     case AV_CODEC_ID_MPEG2VIDEO:
+    {
       profile = VAProfileMPEG2Main;
       if (!m_vaapiConfig.context->SupportsProfile(profile))
         return false;
       break;
+    }
     case AV_CODEC_ID_MPEG4:
     case AV_CODEC_ID_H263:
+    {
       profile = VAProfileMPEG4AdvancedSimple;
       if (!m_vaapiConfig.context->SupportsProfile(profile))
         return false;
       break;
+    }
     case AV_CODEC_ID_H264:
     {
       if (avctx->profile == FF_PROFILE_H264_BASELINE)
@@ -555,15 +559,19 @@ bool CDecoder::Open(AVCodecContext* avctx, const enum PixelFormat fmt, unsigned 
       break;
     }
     case AV_CODEC_ID_WMV3:
+    {
       profile = VAProfileVC1Main;
       if (!m_vaapiConfig.context->SupportsProfile(profile))
         return false;
       break;
+    }
     case AV_CODEC_ID_VC1:
+    {
       profile = VAProfileVC1Advanced;
       if (!m_vaapiConfig.context->SupportsProfile(profile))
         return false;
       break;
+    }
     default:
       return false;
   }
@@ -1273,9 +1281,6 @@ COutput::COutput(CEvent *inMsgEvent) :
   m_dataPort("OutputDataPort", inMsgEvent, &m_outMsgEvent),
   glXBindTexImageEXT(NULL),
   glXReleaseTexImageEXT(NULL),
-  m_state(0),
-  m_bStateMachineSelfTrigger(false),
-  m_extTimeout(0),
   m_vaError(false),
   m_Display(NULL),
   m_Window(None),
@@ -1284,16 +1289,23 @@ COutput::COutput(CEvent *inMsgEvent) :
   m_pixmap(None),
   m_glPixmap(None),
   m_textureTarget(0),
-  m_pp(NULL),
-  m_diMethods(0),
-  m_currentDiMethod(0)
+  m_pp(NULL)
 {
   m_inMsgEvent = inMsgEvent;
+  m_currentDiMethod = VS_INTERLACEMETHOD_NONE;
 
   for (unsigned int i = 0; i < m_bufferPool.allRenderPics.size(); ++i)
   {
     m_bufferPool.freeRenderPics.push_back(i);
   }
+
+  // initialize vars of state machine
+  // this is logically wrong but
+  // helps us of false positives
+  // by coverity checks
+  m_state = 0;
+  m_bStateMachineSelfTrigger = false;
+  m_extTimeout = 0;
 }
 
 void COutput::Start()
@@ -1366,11 +1378,15 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputControlProtocol::FLUSH:
+        {
           msg->Reply(COutputControlProtocol::ACC);
           return;
+        }
         case COutputControlProtocol::PRECLEANUP:
+        {
           msg->Reply(COutputControlProtocol::ACC);
           return;
+        }
         default:
           break;
         }
@@ -1408,6 +1424,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputControlProtocol::INIT:
+        {
           CVaapiConfig *data;
           data = (CVaapiConfig*)msg->data;
           if (data)
@@ -1429,6 +1446,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
             msg->Reply(COutputControlProtocol::ERROR);
           }
           return;
+        }
         default:
           break;
         }
@@ -1441,16 +1459,20 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputControlProtocol::FLUSH:
+        {
           Flush();
           msg->Reply(COutputControlProtocol::ACC);
           return;
+        }
         case COutputControlProtocol::PRECLEANUP:
+        {
           Flush();
           ReleaseBufferPool(true);
           msg->Reply(COutputControlProtocol::ACC);
           m_state = O_TOP_UNCONFIGURED;
           m_extTimeout = 10000;
           return;
+        }
         default:
           break;
         }
@@ -1460,6 +1482,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputDataProtocol::NEWFRAME:
+        {
           CVaapiDecodedPicture *frame;
           frame = (CVaapiDecodedPicture*)msg->data;
           if (frame)
@@ -1468,19 +1491,24 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
             m_extTimeout = 0;
           }
           return;
+        }
         case COutputDataProtocol::RETURNPIC:
+        {
           CVaapiRenderPicture *pic;
           pic = *((CVaapiRenderPicture**)msg->data);
           QueueReturnPicture(pic);
           m_controlPort.SendInMessage(COutputControlProtocol::STATS);
           m_extTimeout = 0;
           return;
+        }
         case COutputDataProtocol::RETURNPROCPIC:
+        {
           int id;
           id = *((int*)msg->data);
           ProcessReturnProcPicture(id);
           m_extTimeout = 0;
           return;
+        }
         default:
           break;
         }
@@ -1493,6 +1521,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputControlProtocol::TIMEOUT:
+        {
           if (ProcessSyncPicture())
             m_extTimeout = 10;
           else
@@ -1503,6 +1532,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
             m_extTimeout = 0;
           }
           return;
+        }
         default:
           break;
         }
@@ -1515,6 +1545,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputControlProtocol::TIMEOUT:
+        {
           if (PreferPP())
           {
             m_currentPicture = m_bufferPool.decodedPics.front();
@@ -1535,6 +1566,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
             m_state = O_TOP_CONFIGURED_IDLE;
           m_extTimeout = 100;
           return;
+        }
         default:
           break;
         }
@@ -1547,6 +1579,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputControlProtocol::TIMEOUT:
+        {
           if (!m_pp->AddPicture(m_currentPicture))
           {
             m_state = O_TOP_ERROR;
@@ -1567,6 +1600,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
           m_controlPort.SendInMessage(COutputControlProtocol::STATS);
           m_extTimeout = 0;
           return;
+        }
         default:
           break;
         }
@@ -1579,6 +1613,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
         switch (signal)
         {
         case COutputControlProtocol::TIMEOUT:
+        {
           CVaapiProcessedPicture outPic;
           if (m_pp->Filter(outPic))
           {
@@ -1590,6 +1625,7 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
           m_state = O_TOP_CONFIGURED_IDLE;
           m_extTimeout = 0;
           return;
+        }
         default:
           break;
         }
@@ -1597,11 +1633,13 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
       break;
 
     case O_TOP_CONFIGURED_OUTPUT:
+    {
       if (port == NULL) // timeout
       {
         switch (signal)
         {
         case COutputControlProtocol::TIMEOUT:
+        {
           if (!m_bufferPool.processedPics.empty())
           {
             CVaapiRenderPicture *outPic;
@@ -1625,12 +1663,13 @@ void COutput::StateMachine(int signal, Protocol *port, Message *msg)
           m_state = O_TOP_CONFIGURED_IDLE;
           m_extTimeout = 0;
           return;
+        }
         default:
           break;
         }
       }
       break;
-
+    }
     default: // we are in no state, should not happen
       CLog::Log(LOGERROR, "COutput::%s - no valid state: %d", __FUNCTION__, m_state);
       return;
@@ -2473,8 +2512,8 @@ CVppPostproc::CVppPostproc()
   , m_backwardRefs(0)
   , m_currentIdx(0)
   , m_frameCount(0)
-  , m_vppMethod(0)
 {
+  m_vppMethod = VS_INTERLACEMETHOD_NONE;
 }
 
 CVppPostproc::~CVppPostproc()
@@ -2943,8 +2982,8 @@ bool CVppPostproc::CheckSuccess(VAStatus status)
 CFFmpegPostproc::CFFmpegPostproc()
  : m_pFilterIn(NULL)
  , m_pFilterOut(NULL)
- , m_diMethod(0)
 {
+  m_diMethod = VS_INTERLACEMETHOD_NONE;
   m_cache = NULL;
   m_pFilterFrameIn = NULL;
   m_pFilterFrameOut = NULL;

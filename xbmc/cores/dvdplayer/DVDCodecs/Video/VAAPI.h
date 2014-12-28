@@ -122,7 +122,7 @@ struct CVaapiConfig
    , useInteropYuv(false)
    , context(NULL)
    , dpy(0)
-   , profile(0)
+   , profile(VAProfileNone)
    //, attrib
    , x11dsp(NULL)
   {
@@ -321,6 +321,11 @@ struct SDiMethods
 {
   EINTERLACEMETHOD diMethods[8];
   int numDiMethods;
+  SDiMethods()
+  {
+    memset(diMethods, 0, sizeof(diMethods));
+    numDiMethods = 0;
+  }
 };
 
 /**
